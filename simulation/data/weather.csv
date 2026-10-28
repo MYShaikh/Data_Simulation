@@ -1,0 +1,55 @@
+festival_year,date,day,hour,temperature_f,precipitation_in,conditions
+2024,2024-12-06,Friday,15:00,63,0.0,Clear
+2024,2024-12-06,Friday,16:00,62,0.0,Clear
+2024,2024-12-06,Friday,17:00,60,0.0,Cloudy
+2024,2024-12-06,Friday,18:00,60,0.0,Partly cloudy
+2024,2024-12-06,Friday,19:00,59,0.0,Cloudy
+2024,2024-12-06,Friday,20:00,58,0.0,Clear
+2024,2024-12-06,Friday,21:00,54,0.0,Cloudy
+2024,2024-12-07,Saturday,12:00,59,0.0,Clear
+2024,2024-12-07,Saturday,13:00,60,0.0,Partly cloudy
+2024,2024-12-07,Saturday,14:00,62,0.0,Cloudy
+2024,2024-12-07,Saturday,15:00,63,0.0,Clear
+2024,2024-12-07,Saturday,16:00,62,0.0,Cloudy
+2024,2024-12-07,Saturday,17:00,60,0.0,Cloudy
+2024,2024-12-07,Saturday,18:00,61,0.0,Cloudy
+2024,2024-12-07,Saturday,19:00,54,0.21,Rain
+2024,2024-12-07,Saturday,20:00,54,0.2,Rain
+2024,2024-12-07,Saturday,21:00,54,0.0,Cloudy
+2024,2024-12-08,Sunday,12:00,60,0.0,Clear
+2024,2024-12-08,Sunday,13:00,60,0.0,Clear
+2024,2024-12-08,Sunday,14:00,61,0.0,Clear
+2024,2024-12-08,Sunday,15:00,63,0.0,Partly cloudy
+2024,2024-12-08,Sunday,16:00,61,0.0,Clear
+2024,2024-12-08,Sunday,17:00,63,0.0,Clear
+2024,2024-12-08,Sunday,18:00,59,0.0,Cloudy
+2024,2024-12-08,Sunday,19:00,58,0.0,Clear
+2024,2024-12-08,Sunday,20:00,59,0.0,Cloudy
+2024,2024-12-08,Sunday,21:00,57,0.0,Partly cloudy
+2025,2025-12-05,Friday,15:00,58,0.0,Clear
+2025,2025-12-05,Friday,16:00,59,0.0,Clear
+2025,2025-12-05,Friday,17:00,57,0.0,Cloudy
+2025,2025-12-05,Friday,18:00,57,0.0,Clear
+2025,2025-12-05,Friday,19:00,53,0.22,Rain
+2025,2025-12-05,Friday,20:00,53,0.18,Rain
+2025,2025-12-05,Friday,21:00,56,0.0,Clear
+2025,2025-12-06,Saturday,12:00,58,0.0,Cloudy
+2025,2025-12-06,Saturday,13:00,58,0.0,Clear
+2025,2025-12-06,Saturday,14:00,60,0.0,Clear
+2025,2025-12-06,Saturday,15:00,61,0.0,Cloudy
+2025,2025-12-06,Saturday,16:00,61,0.0,Clear
+2025,2025-12-06,Saturday,17:00,61,0.0,Clear
+2025,2025-12-06,Saturday,18:00,59,0.0,Clear
+2025,2025-12-06,Saturday,19:00,57,0.0,Clear
+2025,2025-12-06,Saturday,20:00,55,0.0,Clear
+2025,2025-12-06,Saturday,21:00,55,0.0,Clear
+2025,2025-12-07,Sunday,12:00,58,0.0,Clear
+2025,2025-12-07,Sunday,13:00,55,0.12,Rain
+2025,2025-12-07,Sunday,14:00,56,0.12,Rain
+2025,2025-12-07,Sunday,15:00,59,0.0,Partly cloudy
+2025,2025-12-07,Sunday,16:00,61,0.0,Clear
+2025,2025-12-07,Sunday,17:00,61,0.0,Cloudy
+2025,2025-12-07,Sunday,18:00,58,0.0,Cloudy
+2025,2025-12-07,Sunday,19:00,57,0.0,Clear
+2025,2025-12-07,Sunday,20:00,56,0.0,Clear
+2025,2025-12-07,Sunday,21:00,56,0.0,Clear

@@ -1,0 +1,6 @@
+gate_id,gate_name,location,max_lanes,standard_lanes_open,standard_staff,distance_to_main_parking_ft,nearest_transportation,avg_scans_per_lane_per_min,staff_per_lane
+A,North Gate,Next to the main parking deck,10,6,12,400,Parking deck,2.7,2
+B,Main Gate,Front entrance on Piedmont Ave,12,8,16,1300,MARTA station (0.3 mi),2.7,2
+C,East Gate,Rideshare drop-off zone,8,6,12,2000,Rideshare pickup / drop-off,2.7,2
+D,South Gate,"Back of the park, near overflow lot",8,6,12,2900,Overflow parking lot (rarely full),2.7,2
+E,West Gate,VIP and accessible entry,6,4,8,1600,Accessible drop-off,2.0,2

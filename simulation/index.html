@@ -1,0 +1,2093 @@
+<title>Piedmont Live Gate Sim</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: ops board. Gate cards left, bird's-eye map centre, totals/chart/data right; stacks on narrow screens. */
+:root{
+  --bg:#f1f0eb; --panel:#fcfcfb; --panel-2:#f5f4f0; --ink:#151513; --ink-2:#52514e; --muted:#898781;
+  --line:#e1e0d9; --line-2:#c9c8c0; --accent:#5b4bc9; --accent-ink:#ffffff;
+  --grass:#dde7d2; --grass-2:#cfdcc1; --path:#eef1e6; --road:#e3e1da; --road-ink:#b9b7ae; --lot:#eceae3; --stage:#f7f5ee;
+  --g1:#2a78d6; --g2:#eb6834; --g3:#1baf7a; --g4:#eda100; --g5:#e87ba4; --g6:#008300; --g7:#6250d6; --g8:#e34948;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --closed:#9a9892;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow","Segoe UI",system-ui,sans-serif;
+  --shadow:0 1px 2px rgba(20,20,15,.06),0 6px 20px rgba(20,20,15,.05);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#121311; --panel:#1b1c19; --panel-2:#222320; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#8e8d86;
+  --line:#2c2d29; --line-2:#3a3b36; --accent:#9085e9; --accent-ink:#121311;
+  --grass:#1f2a1c; --grass-2:#27342a; --path:#2a3327; --road:#24251f; --road-ink:#4a4b44; --lot:#1f201c; --stage:#2b2c26;
+  --g1:#3987e5; --g2:#d95926; --g3:#199e70; --g4:#c98500; --g5:#d55181; --g7:#9085e9; --g8:#e66767;
+  --closed:#5c5d58; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#121311; --panel:#1b1c19; --panel-2:#222320; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#8e8d86;
+  --line:#2c2d29; --line-2:#3a3b36; --accent:#9085e9; --accent-ink:#121311;
+  --grass:#1f2a1c; --grass-2:#27342a; --path:#2a3327; --road:#24251f; --road-ink:#4a4b44; --lot:#1f201c; --stage:#2b2c26;
+  --g1:#3987e5; --g2:#d95926; --g3:#199e70; --g4:#c98500; --g5:#d55181; --g7:#9085e9; --g8:#e66767;
+  --closed:#5c5d58; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.35;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 24px}
+h1,h2,h3{margin:0;font-family:var(--display);font-weight:600;text-wrap:balance;letter-spacing:.01em}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line-2);background:var(--panel);border-radius:6px;padding:5px 10px;line-height:1.2}
+button:hover{border-color:var(--muted)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+button.sm{padding:2px 8px;font-size:13px}
+button.icon{width:30px;height:30px;padding:0;display:inline-grid;place-items:center;font-size:16px;font-weight:600}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:transparent}
+select{background:var(--panel);border:1px solid var(--line-2);border-radius:6px;padding:5px 8px}
+.num{font-variant-numeric:tabular-nums}
+.label{font-family:var(--display);font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:11.5px;color:var(--muted)}
+
+.app{max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+.top h1{font-size:24px;line-height:1}
+.top .sub{color:var(--ink-2);font-size:13px}
+.clock{font-family:var(--display);font-weight:700;font-size:34px;line-height:1;min-width:130px;font-variant-numeric:tabular-nums}
+.ctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.speed button{min-width:36px}
+.scrub{display:flex;align-items:center;gap:8px;flex:1 1 260px;min-width:0}
+.scrub input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.now{display:flex;gap:14px;flex-wrap:wrap;color:var(--ink-2);font-size:13px}
+.now b{color:var(--ink);font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:600;background:var(--panel-2);border:1px solid var(--line)}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+
+.grid{display:grid;grid-template-columns:300px minmax(0,1fr) 330px;gap:12px;align-items:start}
+@media (max-width:1180px){.grid{grid-template-columns:minmax(0,1fr) 330px}.gates{grid-column:1 / -1;order:3}.centre{order:1}.side{order:2}}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}.side{grid-column:1}.gates{grid-column:1}}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:12px 14px;min-width:0}
+.panel h2{font-size:17px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.panel h2 small{font:500 12px var(--body);color:var(--muted);text-transform:none;letter-spacing:0}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.gates{display:flex;flex-direction:column;gap:10px;min-width:0}
+@media (max-width:1180px){.gates{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}}
+
+.centre{display:flex;flex-direction:column;gap:12px;min-width:0}
+.map{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden;min-width:0}
+.map canvas{display:block;width:100%;height:auto;max-width:100%}
+.map .legend{position:absolute;left:10px;bottom:8px;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--ink-2);background:color-mix(in srgb,var(--panel) 82%,transparent);padding:4px 8px;border-radius:6px;pointer-events:none}
+.map .legend span{display:inline-flex;align-items:center;gap:5px}
+.map .legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.map .hint{position:absolute;right:10px;top:8px;font-size:12px;color:var(--muted);background:color-mix(in srgb,var(--panel) 82%,transparent);padding:3px 8px;border-radius:6px;pointer-events:none}
+
+/* gate card */
+.gate{position:relative;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow);padding:10px 12px 10px 16px;overflow:hidden;min-width:0}
+.gate::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--sev,var(--line-2))}
+.gate.closed{opacity:.72}
+.gate.closed::before{background:var(--closed)}
+.gate .head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.gate .chip{width:12px;height:12px;border-radius:3px;background:var(--gc)}
+.gate .name{font-family:var(--display);font-weight:600;font-size:18px;line-height:1;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gate .name small{font:500 12px var(--body);color:var(--muted);margin-left:4px}
+.gate .status{font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);white-space:nowrap}
+.gate .status.down{color:var(--critical);border-color:var(--critical)}
+.gate .big{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:6px}
+.gate .big .v{font-family:var(--display);font-weight:700;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.gate .big .v em{font:600 13px var(--body);color:var(--muted);margin-left:2px;font-style:normal}
+.gate table{width:100%;border-collapse:collapse;font-size:13px}
+.gate td{padding:2px 0;border-top:1px solid var(--line);color:var(--ink-2)}
+.gate td:last-child{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:500}
+.gate .staff{display:inline-flex;align-items:center;gap:4px}
+.gate .staff b{min-width:24px;text-align:center}
+.gate .staffnum{width:46px;padding:2px 4px;border:1px solid var(--line-2);border-radius:6px;background:var(--panel);text-align:center;font-weight:600}
+.gate .actual{margin-top:6px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.gate .foot{margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.gate .loc{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+
+/* totals */
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tile{background:var(--panel-2);border-radius:8px;padding:8px 10px;min-width:0}
+.tile .v{font-family:var(--display);font-weight:700;font-size:28px;line-height:1.05;font-variant-numeric:tabular-nums}
+.tile .v em{font:600 12px var(--body);color:var(--muted);font-style:normal}
+.tile .k{font-size:12px;color:var(--ink-2);margin-top:2px}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .2s}
+.bar.over i{background:var(--critical)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:3px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row .r{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.row .l{color:var(--ink-2);min-width:0}
+.ev{font-size:13px;padding:5px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:baseline}
+.ev:first-child{border-top:0}
+.ev .t{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.ev .what{min-width:0}
+.ev .what b{font-weight:600}
+.ev .what span{color:var(--ink-2)}
+.ev.live .t{color:var(--accent);font-weight:600}
+.ev.past{opacity:.55}
+.draw{display:inline-block;font-size:11px;font-weight:600;padding:0 6px;border-radius:999px;border:1px solid var(--line-2);color:var(--ink-2);margin-left:4px;vertical-align:1px}
+
+/* chart */
+.chartwrap{position:relative}
+.chartwrap canvas{display:block;width:100%;height:150px;max-width:100%}
+.chartwrap .tip{position:absolute;top:4px;right:4px;font-size:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;pointer-events:none;display:none;font-variant-numeric:tabular-nums;white-space:nowrap}
+.legendrow{display:flex;gap:14px;font-size:12px;color:var(--ink-2);margin-top:4px;flex-wrap:wrap}
+.legendrow span{display:inline-flex;align-items:center;gap:6px}
+.legendrow i{width:16px;height:0;border-top:2px solid var(--g1);display:inline-block}
+.legendrow i.actual{border-top:2px dashed var(--muted)}
+
+/* controls / data */
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:4px 10px;background:transparent}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.field{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:13px}
+.field:first-of-type{border-top:0}
+.field label{color:var(--ink-2)}
+.field input[type=number]{width:64px;padding:3px 6px;border:1px solid var(--line-2);border-radius:6px;background:var(--panel);text-align:right}
+.field input[type=range]{width:120px;accent-color:var(--accent)}
+details.data summary{cursor:pointer;font-family:var(--display);font-weight:600;font-size:17px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.data summary::after{content:"+";font-size:20px;color:var(--muted)}
+details.data[open] summary::after{content:"\2013"}
+.ds{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.ds .n{font-weight:600}
+.ds .s{grid-column:1;color:var(--muted);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ds label{grid-column:2;grid-row:1 / span 2}
+.ds label span{display:inline-block;border:1px solid var(--line-2);border-radius:6px;padding:4px 10px;cursor:pointer;background:var(--panel)}
+.ds label span:hover{border-color:var(--muted)}
+.ds input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.ds.err .s{color:var(--critical)}
+.note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;box-shadow:var(--shadow);max-width:min(90vw,520px);z-index:20}
+.toast[hidden]{display:none}
+@media (prefers-reduced-motion: reduce){.bar i{transition:none}}
+</style>
+
+<div class="app">
+  <header class="top" role="banner">
+    <div>
+      <h1>Piedmont Live &#183; Gate Entry Sim</h1>
+      <div class="sub">Live queue model fed by the 2024&#8211;25 festival data. Change staff, close gates, swap datasets.</div>
+    </div>
+    <div class="clock num" id="clock">&#8212;:&#8212;&#8212;</div>
+    <div class="ctl">
+      <select id="daySel" aria-label="Festival day"></select>
+      <button class="primary" id="playBtn">Play</button>
+      <button id="restartBtn" title="Restart this day">Restart</button>
+      <span class="seg speed" role="group" aria-label="Speed" id="speedSeg">
+        <button data-s="1">1&#215;</button><button data-s="4" aria-pressed="true">4&#215;</button><button data-s="10">10&#215;</button><button data-s="30">30&#215;</button>
+      </span>
+    </div>
+    <div class="scrub">
+      <span class="label" id="scrubOpen">open</span>
+      <input type="range" id="scrub" min="0" max="100" value="0" step="1" aria-label="Time of day">
+      <span class="label" id="scrubClose">close</span>
+    </div>
+    <div class="now" id="nowBar"></div>
+  </header>
+
+  <main class="grid">
+    <aside class="gates" id="gateCards" aria-label="Gates"></aside>
+
+    <div class="centre">
+    <section class="map" aria-label="Live queue by gate">
+      <canvas id="bars" width="1000" height="640"></canvas>
+      <div class="hint">&#9679; 1 person in line &#183; &#9632; 1 staff member, 2 per lane &#183; dashed line = what the gate can scan in the next 15 min</div>
+    </section>
+    <section class="map" aria-label="Bird's-eye map">
+      <canvas id="map" width="1000" height="640"></canvas>
+      <div class="hint" id="hint">1 car = 5 people &#183; cars take the ring road to their drop-off, then walk to the gate</div>
+      <div class="legend" id="legend"></div>
+    </section>
+    </div>
+
+    <aside class="side">
+      <section class="panel" aria-label="Totals">
+        <h2>Right now <small id="totalsTime"></small></h2>
+        <div class="tiles">
+          <div class="tile"><div class="v num" id="tInLine">0</div><div class="k">people in line, all gates</div></div>
+          <div class="tile"><div class="v num" id="tWorst">0<em>min</em></div><div class="k" id="tWorstK">longest wait</div></div>
+          <div class="tile"><div class="v num" id="tServed">0</div><div class="k">scanned in today</div></div>
+          <div class="tile"><div class="v num" id="tAvgWait">0<em>min</em></div><div class="k">avg wait today (sim)</div></div>
+        </div>
+        <div class="row" style="margin-top:8px"><span class="l">Staff deployed</span><span class="r"><span id="tStaff">0</span> / <span id="poolCap" title="Fixed: 60 entry staff per shift (data dictionary)">60</span></span></div>
+        <div class="bar" id="staffBar"><i style="width:0%"></i></div>
+        <div class="row"><span class="l">Unassigned (not at a gate)</span><span class="r num" id="tBench">0</span></div>
+        <div class="row"><span class="l">Actual avg wait today (data)</span><span class="r num" id="tActualWait">&#8212;</span></div>
+        <div class="row"><span class="l">Turned away (no open gate)</span><span class="r num" id="tAway">0</span></div>
+      </section>
+
+      <section class="panel" aria-label="Queue over the day">
+        <h2>People in line <small>sim vs. recorded</small></h2>
+        <div class="chartwrap"><canvas id="chart" width="600" height="300"></canvas><div class="tip" id="chartTip"></div></div>
+        <div class="legendrow"><span><i></i>Simulation (your settings)</span><span><i class="actual"></i>Recorded queue_length_end</span></div>
+      </section>
+
+      <section class="panel" aria-label="Staffing and demand">
+        <h2>Levers</h2>
+        <div class="field"><label>Staffing</label><span class="seg" id="modeSeg"><button data-m="hist" aria-pressed="true">From data</button><button data-m="custom">Custom</button></span></div>
+        <div class="field"><label for="demand">Demand &#215;<b id="demandV">1.00</b></label><input type="range" id="demand" min="0.5" max="2" step="0.05" value="1"></div>
+        <div class="field"><label for="ppd">People per dot</label><input type="number" id="ppd" min="1" max="50" value="5"></div>
+        <div class="field"><label for="laneTime">Lane time added to waits (min)</label><input type="number" id="laneTime" min="0" max="10" step="0.5" value="1.5"></div>
+        <div class="note">From data: lanes and staff follow <code>gate_activity.csv</code> for each 15-min interval. Custom: you set staff per gate, and staff are conserved: adding someone to a gate takes one from another gate (one with a half-staffed lane first, otherwise the least busy), and removing someone sends them to the busiest gate. The 60 never changes, and a gate can't hold more people than it has lane positions; lanes = staff &#247; staff-per-lane, capped at the gate's max lanes. Closing a gate sends its arrivals to the two nearest open gates (60/40). Scanner downtime removes lanes while it lasts.</div>
+      </section>
+
+      <section class="panel" aria-label="Schedule and weather">
+        <h2>On site <small id="weatherNow"></small></h2>
+        <div id="events"></div>
+      </section>
+
+      <section class="panel">
+        <details class="data" id="dataPanel">
+          <summary>Datasets</summary>
+          <div id="datasets"></div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button id="restoreBtn" class="sm">Restore built-in data</button></div>
+          <div class="note">Upload CSVs with the same columns as the originals (see the data dictionary). Gate ids in <code>gate_activity</code> and <code>equipment_downtime</code> must match <code>gate_details</code>. Unknown gate ids get placed around the park edge.</div>
+        </details>
+      </section>
+    </aside>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="text/csv" id="csv-gate_details">
+gate_id,gate_name,location,max_lanes,standard_lanes_open,standard_staff,distance_to_main_parking_ft,nearest_transportation,avg_scans_per_lane_per_min,staff_per_lane
+A,North Gate,Next to the main parking deck,10,6,12,400,Parking deck,2.7,2
+B,Main Gate,Front entrance on Piedmont Ave,12,8,16,1300,MARTA station (0.3 mi),2.7,2
+C,East Gate,Rideshare drop-off zone,8,6,12,2000,Rideshare pickup / drop-off,2.7,2
+D,South Gate,"Back of the park, near overflow lot",8,6,12,2900,Overflow parking lot (rarely full),2.7,2
+E,West Gate,VIP and accessible entry,6,4,8,1600,Accessible drop-off,2.0,2
+</script>
+<script type="text/csv" id="csv-gate_activity">
+festival_year,date,day,interval_start,gate_id,arrivals,scans,queue_length_end,avg_wait_min,lanes_open,staff_assigned
+2024,2024-12-06,Friday,15:00,A,33,33,0,2.3,6,12
+2024,2024-12-06,Friday,15:00,B,33,33,0,1.9,8,16
+2024,2024-12-06,Friday,15:00,C,16,16,0,1.4,6,12
+2024,2024-12-06,Friday,15:00,D,8,8,0,1.7,6,12
+2024,2024-12-06,Friday,15:00,E,10,10,0,1.5,4,8
+2024,2024-12-06,Friday,15:15,A,37,37,0,2.4,6,12
+2024,2024-12-06,Friday,15:15,B,36,36,0,1.6,8,16
+2024,2024-12-06,Friday,15:15,C,20,20,0,1.3,6,12
+2024,2024-12-06,Friday,15:15,D,10,10,0,1.5,6,12
+2024,2024-12-06,Friday,15:15,E,13,13,0,1.4,4,8
+2024,2024-12-06,Friday,15:30,A,55,55,0,2.4,6,12
+2024,2024-12-06,Friday,15:30,B,48,48,0,2.1,8,16
+2024,2024-12-06,Friday,15:30,C,25,25,0,1.9,6,12
+2024,2024-12-06,Friday,15:30,D,13,13,0,2.0,6,12
+2024,2024-12-06,Friday,15:30,E,18,18,0,1.5,4,8
+2024,2024-12-06,Friday,15:45,A,79,79,0,2.2,6,12
+2024,2024-12-06,Friday,15:45,B,72,72,0,2.2,8,16
+2024,2024-12-06,Friday,15:45,C,39,39,0,1.7,6,12
+2024,2024-12-06,Friday,15:45,D,16,16,0,1.7,6,12
+2024,2024-12-06,Friday,15:45,E,25,25,0,2.0,4,8
+2024,2024-12-06,Friday,16:00,A,100,100,0,2.4,6,12
+2024,2024-12-06,Friday,16:00,B,100,100,0,1.4,8,16
+2024,2024-12-06,Friday,16:00,C,61,61,0,1.6,6,12
+2024,2024-12-06,Friday,16:00,D,29,29,0,1.2,6,12
+2024,2024-12-06,Friday,16:00,E,30,30,0,1.7,4,8
+2024,2024-12-06,Friday,16:15,A,146,146,0,2.1,6,12
+2024,2024-12-06,Friday,16:15,B,121,121,0,2.0,8,16
+2024,2024-12-06,Friday,16:15,C,74,74,0,2.3,6,12
+2024,2024-12-06,Friday,16:15,D,31,31,0,1.6,6,12
+2024,2024-12-06,Friday,16:15,E,43,43,0,1.0,4,8
+2024,2024-12-06,Friday,16:30,A,166,166,0,1.2,6,12
+2024,2024-12-06,Friday,16:30,B,159,159,0,2.2,8,16
+2024,2024-12-06,Friday,16:30,C,76,76,0,2.1,6,12
+2024,2024-12-06,Friday,16:30,D,35,35,0,2.4,6,12
+2024,2024-12-06,Friday,16:30,E,51,51,0,1.9,4,8
+2024,2024-12-06,Friday,16:45,A,182,182,0,1.7,6,12
+2024,2024-12-06,Friday,16:45,B,194,194,0,1.1,8,16
+2024,2024-12-06,Friday,16:45,C,112,112,0,1.7,6,12
+2024,2024-12-06,Friday,16:45,D,46,46,0,1.4,6,12
+2024,2024-12-06,Friday,16:45,E,67,67,0,1.4,4,8
+2024,2024-12-06,Friday,17:00,A,229,229,0,1.6,6,12
+2024,2024-12-06,Friday,17:00,B,253,253,0,1.8,8,16
+2024,2024-12-06,Friday,17:00,C,143,143,0,1.5,6,12
+2024,2024-12-06,Friday,17:00,D,56,56,0,1.1,6,12
+2024,2024-12-06,Friday,17:00,E,78,78,0,2.1,4,8
+2024,2024-12-06,Friday,17:15,A,278,240,38,3.4,6,12
+2024,2024-12-06,Friday,17:15,B,294,294,0,1.9,8,16
+2024,2024-12-06,Friday,17:15,C,178,178,0,1.6,6,12
+2024,2024-12-06,Friday,17:15,D,72,72,0,2.2,6,12
+2024,2024-12-06,Friday,17:15,E,94,94,0,2.4,4,8
+2024,2024-12-06,Friday,17:30,A,309,241,106,5.5,6,12
+2024,2024-12-06,Friday,17:30,B,312,312,0,2.4,8,16
+2024,2024-12-06,Friday,17:30,C,145,145,0,1.8,6,12
+2024,2024-12-06,Friday,17:30,D,70,70,0,2.0,6,12
+2024,2024-12-06,Friday,17:30,E,90,90,0,2.0,4,8
+2024,2024-12-06,Friday,17:45,A,256,239,123,8.8,6,12
+2024,2024-12-06,Friday,17:45,B,217,217,0,2.4,8,16
+2024,2024-12-06,Friday,17:45,C,120,120,0,1.2,6,12
+2024,2024-12-06,Friday,17:45,D,68,68,0,1.2,6,12
+2024,2024-12-06,Friday,17:45,E,77,77,0,2.4,4,8
+2024,2024-12-06,Friday,18:00,A,169,238,54,6.9,6,12
+2024,2024-12-06,Friday,18:00,B,192,192,0,1.1,8,16
+2024,2024-12-06,Friday,18:00,C,93,93,0,2.0,6,12
+2024,2024-12-06,Friday,18:00,D,41,41,0,1.5,6,12
+2024,2024-12-06,Friday,18:00,E,56,56,0,1.3,4,8
+2024,2024-12-06,Friday,18:15,A,142,196,0,3.5,6,12
+2024,2024-12-06,Friday,18:15,B,144,144,0,1.1,8,16
+2024,2024-12-06,Friday,18:15,C,67,67,0,1.0,6,12
+2024,2024-12-06,Friday,18:15,D,35,35,0,1.8,6,12
+2024,2024-12-06,Friday,18:15,E,38,38,0,1.3,4,8
+2024,2024-12-06,Friday,18:30,A,123,123,0,2.0,6,12
+2024,2024-12-06,Friday,18:30,B,125,125,0,1.3,8,16
+2024,2024-12-06,Friday,18:30,C,69,69,0,1.7,6,12
+2024,2024-12-06,Friday,18:30,D,31,31,0,1.5,6,12
+2024,2024-12-06,Friday,18:30,E,43,43,0,2.0,4,8
+2024,2024-12-06,Friday,18:45,A,156,156,0,1.0,6,12
+2024,2024-12-06,Friday,18:45,B,147,147,0,1.1,8,16
+2024,2024-12-06,Friday,18:45,C,86,86,0,1.8,6,12
+2024,2024-12-06,Friday,18:45,D,33,33,0,1.6,6,12
+2024,2024-12-06,Friday,18:45,E,44,44,0,1.3,4,8
+2024,2024-12-06,Friday,19:00,A,238,237,,1.3,6,12
+2024,2024-12-06,Friday,19:00,B,233,233,0,1.1,8,16
+2024,2024-12-06,Friday,19:00,C,104,104,0,1.5,6,12
+2024,2024-12-06,Friday,19:00,D,53,53,0,1.1,6,12
+2024,2024-12-06,Friday,19:00,E,71,71,0,1.9,4,8
+2024,2024-12-06,Friday,19:15,A,377,234,144,6.6,6,12
+2024,2024-12-06,Friday,19:15,B,316,316,0,2.4,8,16
+2024,2024-12-06,Friday,19:15,C,159,159,0,1.6,6,12
+2024,2024-12-06,Friday,19:15,D,88,88,0,2.2,6,12
+2024,2024-12-06,Friday,19:15,E,100,100,0,1.3,4,8
+2024,2024-12-06,Friday,19:30,A,452,248,348,16.4,6,12
+2024,2024-12-06,Friday,19:30,B,440,308,132,4.3,8,16
+2024,2024-12-06,Friday,19:30,C,229,229,0,1.1,6,12
+2024,2024-12-06,Friday,19:30,D,98,98,0,2.4,6,12
+2024,2024-12-06,Friday,19:30,E,150,120,30,4.2,4,8
+2024,2024-12-06,Friday,19:45,A,440,244,544,29.2,6,12
+2024,2024-12-06,Friday,19:45,B,401,315,218,9.3,8,16
+2024,2024-12-06,Friday,19:45,C,242,242,0,2.0,6,12
+2024,2024-12-06,Friday,19:45,D,110,110,0,1.3,6,12
+2024,2024-12-06,Friday,19:45,E,132,119,43,6.3,4,8
+2024,2024-12-06,Friday,20:00,A,298,245,597,37.7,6,12
+2024,2024-12-06,Friday,20:00,B,300,325,193,11.4,8,16
+2024,2024-12-06,Friday,20:00,C,172,172,0,2.0,6,12
+2024,2024-12-06,Friday,20:00,D,79,79,0,1.4,6,12
+2024,2024-12-06,Friday,20:00,E,85,121,7,4.7,4,8
+2024,2024-12-06,Friday,20:15,A,191,232,556,37.5,6,12
+2024,2024-12-06,Friday,20:15,B,153,315,30,6.4,8,16
+2024,2024-12-06,Friday,20:15,C,84,84,0,2.2,6,12
+2024,2024-12-06,Friday,20:15,D,42,42,0,1.8,6,12
+2024,2024-12-06,Friday,20:15,E,54,61,0,2.2,4,8
+2024,2024-12-06,Friday,20:30,A,93,235,414,31.2,6,12
+2024,2024-12-06,Friday,20:30,B,77,107,0,2.4,8,16
+2024,2024-12-06,Friday,20:30,C,41,41,0,1.8,6,12
+2024,2024-12-06,Friday,20:30,D,20,20,0,1.7,6,12
+2024,2024-12-06,Friday,20:30,E,24,24,0,2.4,4,8
+2024,2024-12-06,Friday,20:45,A,38,240,212,21.6,6,12
+2024,2024-12-06,Friday,20:45,B,45,45,0,2.5,8,16
+2024,2024-12-06,Friday,20:45,C,24,24,0,2.2,6,12
+2024,2024-12-06,Friday,20:45,D,10,10,0,2.4,6,12
+2024,2024-12-06,Friday,20:45,E,12,12,0,2.4,4,8
+2024,2024-12-06,Friday,21:00,A,13,225,0,7.7,6,12
+2024,2024-12-06,Friday,21:00,B,11,11,0,1.9,8,16
+2024,2024-12-06,Friday,21:00,C,7,7,0,1.6,6,12
+2024,2024-12-06,Friday,21:00,D,3,3,0,1.1,6,12
+2024,2024-12-06,Friday,21:00,E,4,4,0,1.2,4,8
+2024,2024-12-06,Friday,21:15,A,11,11,0,2.4,6,12
+2024,2024-12-06,Friday,21:15,B,10,10,0,2.2,8,16
+2024,2024-12-06,Friday,21:15,C,6,6,0,1.3,6,12
+2024,2024-12-06,Friday,21:15,D,2,2,0,2.3,6,12
+2024,2024-12-06,Friday,21:15,E,3,3,0,2.0,4,8
+2024,2024-12-06,Friday,21:30,A,12,12,0,1.3,6,12
+2024,2024-12-06,Friday,21:30,B,10,10,0,1.5,8,16
+2024,2024-12-06,Friday,21:30,C,5,5,0,1.3,6,12
+2024,2024-12-06,Friday,21:30,D,3,3,0,2.4,6,12
+2024,2024-12-06,Friday,21:30,E,3,3,0,2.3,4,8
+2024,2024-12-06,Friday,21:45,A,10,10,0,1.1,6,12
+2024,2024-12-06,Friday,21:45,B,11,11,0,1.1,8,16
+2024,2024-12-06,Friday,21:45,C,5,5,0,1.1,6,12
+2024,2024-12-06,Friday,21:45,D,3,3,0,1.2,6,12
+2024,2024-12-06,Friday,21:45,E,3,3,0,2.2,4,8
+2024,2024-12-07,Saturday,12:00,A,37,37,0,2.3,6,12
+2024,2024-12-07,Saturday,12:00,B,37,37,0,2.2,8,16
+2024,2024-12-07,Saturday,12:00,C,19,19,0,2.4,6,12
+2024,2024-12-07,Saturday,12:00,D,9,9,0,1.8,6,12
+2024,2024-12-07,Saturday,12:00,E,10,10,0,2.3,4,8
+2024,2024-12-07,Saturday,12:15,A,42,42,0,1.0,6,12
+2024,2024-12-07,Saturday,12:15,B,37,37,0,1.2,8,16
+2024,2024-12-07,Saturday,12:15,C,20,20,0,2.0,6,12
+2024,2024-12-07,Saturday,12:15,D,9,9,0,2.0,6,12
+2024,2024-12-07,Saturday,12:15,E,13,13,0,1.6,4,8
+2024,2024-12-07,Saturday,12:30,A,49,49,0,1.1,6,12
+2024,2024-12-07,Saturday,12:30,B,41,41,0,2.4,8,16
+2024,2024-12-07,Saturday,12:30,C,22,22,0,1.3,6,12
+2024,2024-12-07,Saturday,12:30,D,12,12,0,1.7,6,12
+2024,2024-12-07,Saturday,12:30,E,15,15,0,1.5,4,8
+2024,2024-12-07,Saturday,12:45,A,50,50,0,2.1,6,12
+2024,2024-12-07,Saturday,12:45,B,51,51,0,2.3,8,16
+2024,2024-12-07,Saturday,12:45,C,31,31,0,1.1,6,12
+2024,2024-12-07,Saturday,12:45,D,13,13,0,1.4,6,12
+2024,2024-12-07,Saturday,12:45,E,17,17,0,2.3,4,8
+2024,2024-12-07,Saturday,13:00,A,72,72,0,1.8,6,12
+2024,2024-12-07,Saturday,13:00,B,63,63,0,2.0,8,16
+2024,2024-12-07,Saturday,13:00,C,35,35,0,2.3,6,12
+2024,2024-12-07,Saturday,13:00,D,17,17,0,1.2,6,12
+2024,2024-12-07,Saturday,13:00,E,21,21,0,1.1,4,8
+2024,2024-12-07,Saturday,13:15,A,102,102,0,1.5,6,12
+2024,2024-12-07,Saturday,13:15,B,84,84,0,2.4,8,16
+2024,2024-12-07,Saturday,13:15,C,47,47,0,,6,12
+2024,2024-12-07,Saturday,13:15,D,21,21,0,1.9,6,12
+2024,2024-12-07,Saturday,13:15,E,28,28,0,2.0,4,8
+2024,2024-12-07,Saturday,13:30,A,123,123,0,1.1,6,12
+2024,2024-12-07,Saturday,13:30,B,114,114,0,1.2,8,16
+2024,2024-12-07,Saturday,13:30,C,64,64,0,2.4,6,12
+2024,2024-12-07,Saturday,13:30,D,29,29,0,1.4,6,12
+2024,2024-12-07,Saturday,13:30,E,34,34,0,1.5,4,8
+2024,2024-12-07,Saturday,13:45,A,153,153,0,2.3,6,12
+2024,2024-12-07,Saturday,13:45,B,140,140,0,2.2,8,16
+2024,2024-12-07,Saturday,13:45,C,78,78,0,2.5,6,12
+2024,2024-12-07,Saturday,13:45,D,37,37,0,1.4,6,12
+2024,2024-12-07,Saturday,13:45,E,43,43,0,2.3,4,8
+2024,2024-12-07,Saturday,14:00,A,163,163,0,1.2,6,12
+2024,2024-12-07,Saturday,14:00,B,149,149,0,1.7,8,16
+2024,2024-12-07,Saturday,14:00,C,81,81,0,1.7,6,12
+2024,2024-12-07,Saturday,14:00,D,36,36,0,2.1,6,12
+2024,2024-12-07,Saturday,14:00,E,48,48,0,1.2,4,8
+2024,2024-12-07,Saturday,14:15,A,143,143,0,2.5,6,12
+2024,2024-12-07,Saturday,14:15,B,134,134,0,1.2,8,16
+2024,2024-12-07,Saturday,14:15,C,79,79,0,2.5,6,12
+2024,2024-12-07,Saturday,14:15,D,35,35,0,2.1,6,12
+2024,2024-12-07,Saturday,14:15,D,35,35,0,2.1,6,12
+2024,2024-12-07,Saturday,14:15,E,46,46,0,2.1,4,8
+2024,2024-12-07,Saturday,14:30,A,129,129,0,2.2,6,12
+2024,2024-12-07,Saturday,14:30,B,127,127,0,1.7,8,16
+2024,2024-12-07,Saturday,14:30,C,68,68,0,1.1,6,12
+2024,2024-12-07,Saturday,14:30,D,36,36,0,2.3,6,12
+2024,2024-12-07,Saturday,14:30,E,41,41,0,1.8,4,8
+2024,2024-12-07,Saturday,14:45,A,132,132,0,1.2,6,12
+2024,2024-12-07,Saturday,14:45,B,109,109,0,1.6,8,16
+2024,2024-12-07,Saturday,14:45,C,69,69,0,1.0,6,12
+2024,2024-12-07,Saturday,14:45,D,33,33,0,1.3,6,12
+2024,2024-12-07,Saturday,14:45,E,38,38,0,2.4,4,8
+2024,2024-12-07,Saturday,15:00,A,121,121,0,1.0,6,12
+2024,2024-12-07,Saturday,15:00,B,134,134,0,1.5,8,16
+2024,2024-12-07,Saturday,15:00,C,62,62,0,1.7,6,12
+2024,2024-12-07,Saturday,15:00,D,30,30,0,1.0,6,12
+2024,2024-12-07,Saturday,15:00,E,39,39,0,2.4,4,8
+2024,2024-12-07,Saturday,15:15,A,132,132,0,1.9,6,12
+2024,2024-12-07,Saturday,15:15,B,131,131,0,1.4,8,16
+2024,2024-12-07,Saturday,15:15,C,67,67,0,2.1,6,12
+2024,2024-12-07,Saturday,15:15,D,36,36,0,2.5,6,12
+2024,2024-12-07,Saturday,15:15,E,40,40,0,2.5,4,8
+2024,2024-12-07,Saturday,15:30,A,149,149,0,2.4,6,12
+2024,2024-12-07,Saturday,15:30,B,154,154,0,1.9,8,16
+2024,2024-12-07,Saturday,15:30,C,80,80,0,1.8,6,12
+2024,2024-12-07,Saturday,15:30,D,42,42,0,1.4,6,12
+2024,2024-12-07,Saturday,15:30,E,55,55,0,1.5,4,8
+2024,2024-12-07,Saturday,15:45,A,203,203,0,2.4,6,12
+2024,2024-12-07,Saturday,15:45,B,213,213,0,1.8,8,16
+2024,2024-12-07,Saturday,15:45,C,111,111,0,2.5,6,12
+2024,2024-12-07,Saturday,15:45,D,52,52,0,1.7,6,12
+2024,2024-12-07,Saturday,15:45,E,57,57,0,1.1,4,8
+2024,2024-12-07,Saturday,16:00,A,275,232,43,3.5,6,12
+2024,2024-12-07,Saturday,16:00,B,272,272,0,2.3,8,16
+2024,2024-12-07,Saturday,16:00,C,143,143,0,2.0,6,12
+2024,2024-12-07,Saturday,16:00,D,68,68,0,1.1,6,12
+2024,2024-12-07,Saturday,16:00,E,87,87,0,2.0,4,8
+2024,2024-12-07,Saturday,16:15,A,390,235,198,8.8,6,12
+2024,2024-12-07,Saturday,16:15,B,323,323,0,1.6,8,16
+2024,2024-12-07,Saturday,16:15,C,160,160,0,2.3,6,12
+2024,2024-12-07,Saturday,16:15,D,79,79,0,1.2,6,12
+2024,2024-12-07,Saturday,16:15,E,117,115,2,1.9,4,8
+2024,2024-12-07,Saturday,16:30,A,371,237,332,18.3,6,12
+2024,2024-12-07,Saturday,16:30,B,361,329,32,3.2,8,16
+2024,2024-12-07,Saturday,16:30,C,174,174,0,1.2,6,12
+2024,2024-12-07,Saturday,16:30,D,72,72,0,1.6,6,12
+2024,2024-12-07,Saturday,16:30,E,97,99,0,2.4,4,8
+2024,2024-12-07,Saturday,16:45,A,259,241,350,23.2,6,12
+2024,2024-12-07,Saturday,16:45,B,293,312,12,2.6,8,16
+2024,2024-12-07,Saturday,16:45,C,158,158,0,1.8,6,12
+2024,2024-12-07,Saturday,16:45,D,78,78,0,2.4,6,12
+2024,2024-12-07,Saturday,16:45,E,80,80,0,2.4,4,8
+2024,2024-12-07,Saturday,17:00,A,208,234,324,22.1,6,12
+2024,2024-12-07,Saturday,17:00,B,208,125,95,8.7,8,16
+2024,2024-12-07,Saturday,17:00,C,116,116,0,1.0,6,12
+2024,2024-12-07,Saturday,17:00,D,59,59,0,1.2,6,12
+2024,2024-12-07,Saturday,17:00,E,59,59,0,1.8,4,8
+2024,2024-12-07,Saturday,17:15,A,165,249,240,19.6,6,12
+2024,2024-12-07,Saturday,17:15,B,187,117,165,18.2,8,16
+2024,2024-12-07,Saturday,17:15,C,94,94,0,1.6,6,12
+2024,2024-12-07,Saturday,17:15,D,45,45,0,1.7,6,12
+2024,2024-12-07,Saturday,17:15,E,49,49,0,1.0,4,8
+2024,2024-12-07,Saturday,17:30,A,175,232,183,14.5,6,12
+2024,2024-12-07,Saturday,17:30,B,179,122,222,25.7,8,16
+2024,2024-12-07,Saturday,17:30,C,89,89,0,1.7,6,12
+2024,2024-12-07,Saturday,17:30,D,37,37,0,1.9,6,12
+2024,2024-12-07,Saturday,17:30,E,48,48,0,1.3,4,8
+2024,2024-12-07,Saturday,17:45,A,167,245,105,10.2,6,12
+2024,2024-12-07,Saturday,17:45,B,179,116,285,33.6,8,16
+2024,2024-12-07,Saturday,17:45,C,102,102,0,1.7,6,12
+2024,2024-12-07,Saturday,17:45,D,41,41,0,2.0,6,12
+2024,2024-12-07,Saturday,17:45,E,56,56,0,2.0,4,8
+2024,2024-12-07,Saturday,18:00,A,176,236,45,6.2,6,12
+2024,2024-12-07,Saturday,18:00,B,161,125,321,39.4,8,16
+2024,2024-12-07,Saturday,18:00,C,90,90,0,1.9,6,12
+2024,2024-12-07,Saturday,18:00,D,41,41,0,1.7,6,12
+2024,2024-12-07,Saturday,18:00,E,53,53,0,2.0,4,8
+2024,2024-12-07,Saturday,18:15,A,151,196,0,2.5,6,12
+2024,2024-12-07,Saturday,18:15,B,153,326,149,12.9,8,16
+2024,2024-12-07,Saturday,18:15,C,86,86,0,2.4,6,12
+2024,2024-12-07,Saturday,18:15,D,37,37,0,1.2,6,12
+2024,2024-12-07,Saturday,18:15,E,44,44,0,1.0,4,8
+2024,2024-12-07,Saturday,18:30,A,171,171,0,2.4,6,12
+2024,2024-12-07,Saturday,18:30,B,147,296,0,4.6,8,16
+2024,2024-12-07,Saturday,18:30,C,85,85,0,2.2,6,12
+2024,2024-12-07,Saturday,18:30,D,41,41,0,1.8,6,12
+2024,2024-12-07,Saturday,18:30,E,49,49,0,1.5,4,8
+2024,2024-12-07,Saturday,18:45,A,264,245,19,3.0,6,12
+2024,2024-12-07,Saturday,18:45,B,201,201,0,1.5,8,16
+2024,2024-12-07,Saturday,18:45,C,109,109,0,1.8,6,12
+2024,2024-12-07,Saturday,18:45,D,55,55,0,1.0,6,12
+2024,2024-12-07,Saturday,18:45,E,77,77,0,1.3,4,8
+2024,2024-12-07,Saturday,19:00,A,364,235,148,7.0,6,12
+2024,2024-12-07,Saturday,19:00,B,380,319,61,2.5,8,16
+2024,2024-12-07,Saturday,19:00,C,188,188,0,1.5,6,12
+2024,2024-12-07,Saturday,19:00,D,91,91,0,2.2,6,12
+2024,2024-12-07,Saturday,19:00,E,108,108,0,2.1,4,8
+2024,2024-12-07,Saturday,19:15,A,548,232,464,20.4,6,12
+2024,2024-12-07,Saturday,19:15,B,417,328,150,6.9,8,16
+2024,2024-12-07,Saturday,19:15,C,251,238,13,2.3,6,12
+2024,2024-12-07,Saturday,19:15,D,113,113,0,2.5,6,12
+2024,2024-12-07,Saturday,19:15,E,136,121,15,2.5,4,8
+2024,2024-12-07,Saturday,19:30,A,455,233,686,37.9,6,12
+2024,2024-12-07,Saturday,19:30,B,468,334,284,11.8,8,16
+2024,2024-12-07,Saturday,19:30,C,245,245,13,2.6,6,12
+2024,2024-12-07,Saturday,19:30,D,115,115,0,1.2,6,12
+2024,2024-12-07,Saturday,19:30,E,143,116,42,5.2,4,8
+2024,2024-12-07,Saturday,19:45,A,367,233,819,47.6,6,12
+2024,2024-12-07,Saturday,19:45,B,323,327,281,14.2,8,16
+2024,2024-12-07,Saturday,19:45,C,180,193,0,2.2,6,12
+2024,2024-12-07,Saturday,19:45,D,75,75,0,1.1,6,12
+2024,2024-12-07,Saturday,19:45,E,107,119,30,6.2,4,8
+2024,2024-12-07,Saturday,20:00,A,175,247,747,50.0,6,12
+2024,2024-12-07,Saturday,20:00,B,177,332,126,10.5,8,16
+2024,2024-12-07,Saturday,20:00,C,101,101,0,1.2,6,12
+2024,2024-12-07,Saturday,20:00,D,43,43,0,2.2,6,12
+2024,2024-12-07,Saturday,20:00,E,68,98,0,3.7,4,8
+2024,2024-12-07,Saturday,20:15,A,91,236,602,43.4,6,12
+2024,2024-12-07,Saturday,20:15,B,88,214,0,4.2,8,16
+2024,2024-12-07,Saturday,20:15,C,48,48,0,2.4,6,12
+2024,2024-12-07,Saturday,20:15,D,23,23,0,1.2,6,12
+2024,2024-12-07,Saturday,20:15,E,26,26,0,1.7,4,8
+2024,2024-12-07,Saturday,20:30,A,23,249,375,31.2,6,12
+2024,2024-12-07,Saturday,20:30,B,23,23,0,1.7,8,16
+2024,2024-12-07,Saturday,20:30,C,13,13,0,1.8,6,12
+2024,2024-12-07,Saturday,20:30,D,6,6,0,1.0,6,12
+2024,2024-12-07,Saturday,20:30,E,8,8,0,1.0,4,8
+2024,2024-12-07,Saturday,20:45,A,15,234,156,18.4,6,12
+2024,2024-12-07,Saturday,20:45,B,14,14,0,2.3,8,16
+2024,2024-12-07,Saturday,20:45,C,7,7,0,1.0,6,12
+2024,2024-12-07,Saturday,20:45,D,4,4,0,1.4,6,12
+2024,2024-12-07,Saturday,20:45,E,5,5,0,1.6,4,8
+2024,2024-12-07,Saturday,21:00,A,13,169,0,6.5,6,12
+2024,2024-12-07,Saturday,21:00,B,11,11,0,2.0,8,16
+2024,2024-12-07,Saturday,21:00,C,6,6,0,1.8,6,12
+2024,2024-12-07,Saturday,21:00,D,3,3,0,1.2,6,12
+2024,2024-12-07,Saturday,21:00,E,4,4,0,2.2,4,8
+2024,2024-12-07,Saturday,21:15,A,13,13,0,2.0,6,12
+2024,2024-12-07,Saturday,21:15,A,13,13,0,2.0,6,12
+2024,2024-12-07,Saturday,21:15,B,13,13,0,2.2,8,16
+2024,2024-12-07,Saturday,21:15,C,6,6,0,1.7,6,12
+2024,2024-12-07,Saturday,21:15,D,3,3,0,1.9,6,12
+2024,2024-12-07,Saturday,21:15,E,4,4,0,1.2,4,8
+2024,2024-12-07,Saturday,21:30,A,12,12,0,1.6,6,12
+2024,2024-12-07,Saturday,21:30,B,13,13,0,1.4,8,16
+2024,2024-12-07,Saturday,21:30,C,6,6,0,1.9,6,12
+2024,2024-12-07,Saturday,21:30,D,3,3,0,2.2,6,12
+2024,2024-12-07,Saturday,21:30,E,4,4,0,1.7,4,8
+2024,2024-12-07,Saturday,21:45,A,12,12,0,2.5,6,12
+2024,2024-12-07,Saturday,21:45,B,11,11,0,1.2,8,16
+2024,2024-12-07,Saturday,21:45,C,7,7,0,2.3,6,12
+2024,2024-12-07,Saturday,21:45,D,3,3,0,1.0,6,12
+2024,2024-12-07,Saturday,21:45,E,4,4,0,1.2,4,8
+2024,2024-12-08,Sunday,12:00,A,33,33,0,1.3,6,12
+2024,2024-12-08,Sunday,12:00,B,36,36,0,1.2,8,16
+2024,2024-12-08,Sunday,12:00,C,18,18,0,1.9,6,12
+2024,2024-12-08,Sunday,12:00,D,9,9,0,1.2,6,12
+2024,2024-12-08,Sunday,12:00,E,10,10,0,2.0,4,8
+2024,2024-12-08,Sunday,12:15,A,40,40,0,2.4,6,12
+2024,2024-12-08,Sunday,12:15,B,40,40,0,2.5,8,16
+2024,2024-12-08,Sunday,12:15,C,22,22,0,1.1,6,12
+2024,2024-12-08,Sunday,12:15,D,9,9,0,1.6,6,12
+2024,2024-12-08,Sunday,12:15,E,11,11,0,2.2,4,8
+2024,2024-12-08,Sunday,12:30,A,50,50,0,1.2,6,12
+2024,2024-12-08,Sunday,12:30,B,53,53,0,1.5,8,16
+2024,2024-12-08,Sunday,12:30,C,26,26,0,1.2,6,12
+2024,2024-12-08,Sunday,12:30,D,13,13,0,1.0,6,12
+2024,2024-12-08,Sunday,12:30,E,14,14,0,2.4,4,8
+2024,2024-12-08,Sunday,12:45,A,65,65,0,1.4,6,12
+2024,2024-12-08,Sunday,12:45,B,66,66,0,2.1,8,16
+2024,2024-12-08,Sunday,12:45,C,37,37,0,1.1,6,12
+2024,2024-12-08,Sunday,12:45,D,16,16,0,1.8,6,12
+2024,2024-12-08,Sunday,12:45,E,22,22,0,2.3,4,8
+2024,2024-12-08,Sunday,13:00,A,92,92,0,1.8,6,12
+2024,2024-12-08,Sunday,13:00,B,103,103,0,1.9,8,16
+2024,2024-12-08,Sunday,13:00,C,50,50,0,1.2,6,12
+2024,2024-12-08,Sunday,13:00,D,27,27,0,1.6,6,12
+2024,2024-12-08,Sunday,13:00,E,28,28,0,1.1,4,8
+2024,2024-12-08,Sunday,13:15,A,123,123,0,2.0,6,12
+2024,2024-12-08,Sunday,13:15,B,132,132,0,1.9,8,16
+2024,2024-12-08,Sunday,13:15,C,57,57,0,2.1,6,12
+2024,2024-12-08,Sunday,13:15,D,32,32,0,1.5,6,12
+2024,2024-12-08,Sunday,13:15,E,41,41,0,1.4,4,8
+2024,2024-12-08,Sunday,13:30,A,141,141,0,2.3,6,12
+2024,2024-12-08,Sunday,13:30,B,122,122,0,1.7,8,16
+2024,2024-12-08,Sunday,13:30,C,68,68,0,1.7,6,12
+2024,2024-12-08,Sunday,13:30,D,30,30,0,1.9,6,12
+2024,2024-12-08,Sunday,13:30,E,40,40,0,1.2,4,8
+2024,2024-12-08,Sunday,13:45,A,131,131,0,1.9,6,12
+2024,2024-12-08,Sunday,13:45,B,127,127,0,2.0,8,16
+2024,2024-12-08,Sunday,13:45,C,57,57,0,2.2,6,12
+2024,2024-12-08,Sunday,13:45,D,26,26,0,1.3,6,12
+2024,2024-12-08,Sunday,13:45,E,36,36,0,2.4,4,8
+2024,2024-12-08,Sunday,14:00,A,103,103,0,1.9,6,12
+2024,2024-12-08,Sunday,14:00,B,103,103,0,1.3,8,16
+2024,2024-12-08,Sunday,14:00,C,61,61,0,1.5,6,12
+2024,2024-12-08,Sunday,14:00,D,25,25,0,1.4,6,12
+2024,2024-12-08,Sunday,14:00,E,37,37,0,1.7,4,8
+2024,2024-12-08,Sunday,14:15,A,108,108,,1.9,6,12
+2024,2024-12-08,Sunday,14:15,B,92,92,0,1.7,8,16
+2024,2024-12-08,Sunday,14:15,C,53,53,0,1.5,6,12
+2024,2024-12-08,Sunday,14:15,D,27,27,0,1.2,6,12
+2024,2024-12-08,Sunday,14:15,E,35,35,0,2.4,4,8
+2024,2024-12-08,Sunday,14:15,E,35,35,0,2.4,4,8
+2024,2024-12-08,Sunday,14:30,A,95,95,0,2.2,6,12
+2024,2024-12-08,Sunday,14:30,B,108,108,0,2.4,8,16
+2024,2024-12-08,Sunday,14:30,C,54,54,0,2.3,6,12
+2024,2024-12-08,Sunday,14:30,D,24,24,0,2.4,6,12
+2024,2024-12-08,Sunday,14:30,E,31,31,0,2.3,4,8
+2024,2024-12-08,Sunday,14:45,A,125,125,0,2.2,6,12
+2024,2024-12-08,Sunday,14:45,B,103,103,0,2.5,8,16
+2024,2024-12-08,Sunday,14:45,C,55,55,0,1.5,6,12
+2024,2024-12-08,Sunday,14:45,D,26,26,0,2.1,6,12
+2024,2024-12-08,Sunday,14:45,E,35,35,0,1.3,4,8
+2024,2024-12-08,Sunday,15:00,A,121,121,0,2.0,6,12
+2024,2024-12-08,Sunday,15:00,B,118,118,0,1.8,8,16
+2024,2024-12-08,Sunday,15:00,C,62,62,0,1.8,6,12
+2024,2024-12-08,Sunday,15:00,D,27,27,0,2.2,6,12
+2024,2024-12-08,Sunday,15:00,E,35,35,0,2.1,4,8
+2024,2024-12-08,Sunday,15:15,A,119,119,0,1.1,6,12
+2024,2024-12-08,Sunday,15:15,B,115,115,0,2.2,8,16
+2024,2024-12-08,Sunday,15:15,C,64,64,0,2.2,6,12
+2024,2024-12-08,Sunday,15:15,D,31,31,0,1.8,6,12
+2024,2024-12-08,Sunday,15:15,E,38,38,0,2.4,4,8
+2024,2024-12-08,Sunday,15:30,A,140,140,0,1.7,6,12
+2024,2024-12-08,Sunday,15:30,B,115,115,0,1.6,8,16
+2024,2024-12-08,Sunday,15:30,C,75,75,0,2.4,6,12
+2024,2024-12-08,Sunday,15:30,D,31,31,0,1.9,6,12
+2024,2024-12-08,Sunday,15:30,E,37,37,0,1.1,4,8
+2024,2024-12-08,Sunday,15:45,A,145,145,0,1.7,6,12
+2024,2024-12-08,Sunday,15:45,B,152,152,0,2.1,8,16
+2024,2024-12-08,Sunday,15:45,C,79,79,0,1.7,6,12
+2024,2024-12-08,Sunday,15:45,D,40,40,0,1.4,6,12
+2024,2024-12-08,Sunday,15:45,E,53,53,0,1.2,4,8
+2024,2024-12-08,Sunday,16:00,A,191,191,0,2.0,6,12
+2024,2024-12-08,Sunday,16:00,B,203,203,0,2.0,8,16
+2024,2024-12-08,Sunday,16:00,C,101,101,0,1.3,6,12
+2024,2024-12-08,Sunday,16:00,D,45,45,0,1.1,6,12
+2024,2024-12-08,Sunday,16:00,E,59,59,0,1.8,4,8
+2024,2024-12-08,Sunday,16:15,A,289,239,50,2.8,6,12
+2024,2024-12-08,Sunday,16:15,B,279,279,0,1.8,8,16
+2024,2024-12-08,Sunday,16:15,C,130,130,0,1.9,6,12
+2024,2024-12-08,Sunday,16:15,D,59,59,0,2.1,6,12
+2024,2024-12-08,Sunday,16:15,E,80,80,0,1.9,4,8
+2024,2024-12-08,Sunday,16:30,A,314,231,133,7.3,6,12
+2024,2024-12-08,Sunday,16:30,B,283,283,0,2.1,8,16
+2024,2024-12-08,Sunday,16:30,C,180,180,0,,6,12
+2024,2024-12-08,Sunday,16:30,D,79,79,0,1.9,6,12
+2024,2024-12-08,Sunday,16:30,E,106,106,0,1.3,4,8
+2024,2024-12-08,Sunday,16:45,A,298,248,184,10.9,6,12
+2024,2024-12-08,Sunday,16:45,B,311,311,0,1.8,8,16
+2024,2024-12-08,Sunday,16:45,C,191,191,0,1.3,6,12
+2024,2024-12-08,Sunday,16:45,D,77,77,0,1.1,6,12
+2024,2024-12-08,Sunday,16:45,E,107,107,0,2.2,4,8
+2024,2024-12-08,Sunday,17:00,A,244,236,191,13.3,6,12
+2024,2024-12-08,Sunday,17:00,B,266,266,0,1.9,8,16
+2024,2024-12-08,Sunday,17:00,C,140,140,0,1.1,6,12
+2024,2024-12-08,Sunday,17:00,D,57,57,0,1.8,6,12
+2024,2024-12-08,Sunday,17:00,E,82,82,0,1.4,4,8
+2024,2024-12-08,Sunday,17:15,A,186,238,139,11.4,6,12
+2024,2024-12-08,Sunday,17:15,B,180,180,0,2.3,8,16
+2024,2024-12-08,Sunday,17:15,C,99,99,0,2.1,6,12
+2024,2024-12-08,Sunday,17:15,D,41,41,0,1.7,6,12
+2024,2024-12-08,Sunday,17:15,E,56,56,0,2.3,4,8
+2024,2024-12-08,Sunday,17:30,A,143,242,41,6.8,6,12
+2024,2024-12-08,Sunday,17:30,B,135,135,0,2.4,8,16
+2024,2024-12-08,Sunday,17:30,C,72,72,0,1.0,6,12
+2024,2024-12-08,Sunday,17:30,D,32,32,0,1.5,6,12
+2024,2024-12-08,Sunday,17:30,E,47,47,0,1.7,4,8
+2024,2024-12-08,Sunday,17:45,A,123,164,0,2.4,6,12
+2024,2024-12-08,Sunday,17:45,B,127,127,0,2.4,8,16
+2024,2024-12-08,Sunday,17:45,C,58,58,0,1.9,6,12
+2024,2024-12-08,Sunday,17:45,D,29,29,0,1.5,6,12
+2024,2024-12-08,Sunday,17:45,E,40,40,0,2.3,4,8
+2024,2024-12-08,Sunday,18:00,A,149,149,0,2.1,6,12
+2024,2024-12-08,Sunday,18:00,B,143,143,0,1.4,8,16
+2024,2024-12-08,Sunday,18:00,C,69,69,0,1.5,6,12
+2024,2024-12-08,Sunday,18:00,D,37,37,0,1.3,6,12
+2024,2024-12-08,Sunday,18:00,E,53,53,0,1.9,4,8
+2024,2024-12-08,Sunday,18:15,A,220,220,0,1.9,6,12
+2024,2024-12-08,Sunday,18:15,B,223,223,0,1.5,8,16
+2024,2024-12-08,Sunday,18:15,C,124,124,0,1.1,6,12
+2024,2024-12-08,Sunday,18:15,D,60,60,0,1.9,6,12
+2024,2024-12-08,Sunday,18:15,E,66,66,0,1.2,4,8
+2024,2024-12-08,Sunday,18:30,A,379,311,68,3.6,8,16
+2024,2024-12-08,Sunday,18:30,B,338,320,18,1.7,8,16
+2024,2024-12-08,Sunday,18:30,C,177,177,0,1.1,6,12
+2024,2024-12-08,Sunday,18:30,D,94,94,0,1.4,4,8
+2024,2024-12-08,Sunday,18:30,E,106,106,0,2.4,4,8
+2024,2024-12-08,Sunday,18:45,A,462,312,217,8.9,8,16
+2024,2024-12-08,Sunday,18:45,B,477,320,174,5.7,8,16
+2024,2024-12-08,Sunday,18:45,C,233,233,0,2.1,6,12
+2024,2024-12-08,Sunday,18:45,D,123,123,0,1.4,4,8
+2024,2024-12-08,Sunday,18:45,E,150,120,30,3.1,4,8
+2024,2024-12-08,Sunday,19:00,A,487,326,378,16.0,8,16
+2024,2024-12-08,Sunday,19:00,B,426,330,271,12.2,8,16
+2024,2024-12-08,Sunday,19:00,C,224,224,0,1.7,6,12
+2024,2024-12-08,Sunday,19:00,D,121,121,0,2.4,4,8
+2024,2024-12-08,Sunday,19:00,E,145,120,55,6.9,4,8
+2024,2024-12-08,Sunday,19:15,A,307,331,354,19.1,8,16
+2024,2024-12-08,Sunday,19:15,B,381,317,334,16.0,8,16
+2024,2024-12-08,Sunday,19:15,C,159,159,0,1.5,6,12
+2024,2024-12-08,Sunday,19:15,D,90,90,0,2.2,4,8
+2024,2024-12-08,Sunday,19:15,E,93,122,26,6.4,4,8
+2024,2024-12-08,Sunday,19:30,A,175,318,211,15.2,8,16
+2024,2024-12-08,Sunday,19:30,B,181,321,194,14.4,8,16
+2024,2024-12-08,Sunday,19:30,C,106,106,0,2.1,6,12
+2024,2024-12-08,Sunday,19:30,D,49,49,0,2.3,4,8
+2024,2024-12-08,Sunday,19:30,E,53,79,0,3.4,4,8
+2024,2024-12-08,Sunday,19:45,A,97,308,0,6.9,8,16
+2024,2024-12-08,Sunday,19:45,B,89,283,0,6.7,8,16
+2024,2024-12-08,Sunday,19:45,C,52,52,0,1.4,6,12
+2024,2024-12-08,Sunday,19:45,D,23,23,0,1.5,4,8
+2024,2024-12-08,Sunday,19:45,E,28,28,0,1.0,4,8
+2024,2024-12-08,Sunday,20:00,A,58,58,0,2.4,8,16
+2024,2024-12-08,Sunday,20:00,B,52,52,0,1.8,8,16
+2024,2024-12-08,Sunday,20:00,C,26,26,0,1.5,6,12
+2024,2024-12-08,Sunday,20:00,D,13,13,0,2.4,4,8
+2024,2024-12-08,Sunday,20:00,E,17,17,0,1.5,4,8
+2024,2024-12-08,Sunday,20:15,A,36,36,0,1.1,8,16
+2024,2024-12-08,Sunday,20:15,B,36,36,0,2.0,8,16
+2024,2024-12-08,Sunday,20:15,C,23,23,0,2.4,6,12
+2024,2024-12-08,Sunday,20:15,D,9,9,0,1.8,4,8
+2024,2024-12-08,Sunday,20:15,E,13,13,0,1.8,4,8
+2024,2024-12-08,Sunday,20:30,A,13,13,0,2.4,8,16
+2024,2024-12-08,Sunday,20:30,B,11,11,0,1.6,8,16
+2024,2024-12-08,Sunday,20:30,C,5,5,0,1.8,6,12
+2024,2024-12-08,Sunday,20:30,D,3,3,0,2.0,4,8
+2024,2024-12-08,Sunday,20:30,E,4,4,0,1.7,4,8
+2024,2024-12-08,Sunday,20:45,A,11,11,0,1.0,8,16
+2024,2024-12-08,Sunday,20:45,B,11,11,0,1.0,8,16
+2024,2024-12-08,Sunday,20:45,C,6,6,0,1.9,6,12
+2024,2024-12-08,Sunday,20:45,D,3,3,0,2.2,4,8
+2024,2024-12-08,Sunday,20:45,E,4,4,0,1.9,4,8
+2024,2024-12-08,Sunday,21:00,A,11,11,0,2.0,6,12
+2024,2024-12-08,Sunday,21:00,B,12,12,0,1.7,8,16
+2024,2024-12-08,Sunday,21:00,C,6,6,0,2.5,6,12
+2024,2024-12-08,Sunday,21:00,D,3,3,0,1.9,6,12
+2024,2024-12-08,Sunday,21:00,E,4,4,0,1.4,4,8
+2024,2024-12-08,Sunday,21:15,A,12,12,0,2.3,6,12
+2024,2024-12-08,Sunday,21:15,B,11,11,0,2.3,8,16
+2024,2024-12-08,Sunday,21:15,C,5,5,0,1.0,6,12
+2024,2024-12-08,Sunday,21:15,D,3,3,0,1.0,6,12
+2024,2024-12-08,Sunday,21:15,E,4,4,0,2.0,4,8
+2024,2024-12-08,Sunday,21:30,A,11,11,0,1.4,6,12
+2024,2024-12-08,Sunday,21:30,B,11,11,0,2.1,8,16
+2024,2024-12-08,Sunday,21:30,C,6,6,0,1.3,6,12
+2024,2024-12-08,Sunday,21:30,D,3,3,0,1.9,6,12
+2024,2024-12-08,Sunday,21:30,E,4,4,0,2.3,4,8
+2024,2024-12-08,Sunday,21:45,A,12,12,0,2.3,6,12
+2024,2024-12-08,Sunday,21:45,B,12,12,0,1.6,8,16
+2024,2024-12-08,Sunday,21:45,C,6,6,0,1.4,6,12
+2024,2024-12-08,Sunday,21:45,D,3,3,0,1.4,6,12
+2024,2024-12-08,Sunday,21:45,E,3,3,0,1.5,4,8
+2025,2025-12-05,Friday,15:00,A,33,33,0,2.1,6,12
+2025,2025-12-05,Friday,15:00,B,31,31,0,1.7,8,16
+2025,2025-12-05,Friday,15:00,C,18,18,0,1.0,6,12
+2025,2025-12-05,Friday,15:00,D,9,9,0,1.9,6,12
+2025,2025-12-05,Friday,15:00,E,10,10,0,1.1,4,8
+2025,2025-12-05,Friday,15:15,A,38,38,0,2.3,6,12
+2025,2025-12-05,Friday,15:15,B,42,42,0,1.2,8,16
+2025,2025-12-05,Friday,15:15,C,23,23,0,1.3,6,12
+2025,2025-12-05,Friday,15:15,D,9,9,0,1.9,6,12
+2025,2025-12-05,Friday,15:15,E,12,12,0,1.8,4,8
+2025,2025-12-05,Friday,15:30,A,56,56,0,2.2,6,12
+2025,2025-12-05,Friday,15:30,B,59,59,0,2.3,8,16
+2025,2025-12-05,Friday,15:30,C,29,29,0,1.0,6,12
+2025,2025-12-05,Friday,15:30,D,12,12,0,1.2,6,12
+2025,2025-12-05,Friday,15:30,E,16,16,0,1.9,4,8
+2025,2025-12-05,Friday,15:45,A,79,79,0,1.6,6,12
+2025,2025-12-05,Friday,15:45,B,79,79,0,1.2,8,16
+2025,2025-12-05,Friday,15:45,C,37,37,0,1.5,6,12
+2025,2025-12-05,Friday,15:45,D,20,20,0,1.8,6,12
+2025,2025-12-05,Friday,15:45,E,26,26,0,2.5,4,8
+2025,2025-12-05,Friday,16:00,A,117,117,0,1.3,6,12
+2025,2025-12-05,Friday,16:00,B,104,104,0,2.0,8,16
+2025,2025-12-05,Friday,16:00,C,60,60,0,2.3,6,12
+2025,2025-12-05,Friday,16:00,D,26,26,0,2.0,6,12
+2025,2025-12-05,Friday,16:00,E,34,34,0,1.5,4,8
+2025,2025-12-05,Friday,16:15,A,145,145,0,1.3,6,12
+2025,2025-12-05,Friday,16:15,B,143,143,0,1.9,8,16
+2025,2025-12-05,Friday,16:15,C,73,73,0,1.2,6,12
+2025,2025-12-05,Friday,16:15,D,34,34,0,1.6,6,12
+2025,2025-12-05,Friday,16:15,E,40,40,0,1.2,4,8
+2025,2025-12-05,Friday,16:30,A,178,178,0,1.6,6,12
+2025,2025-12-05,Friday,16:30,B,174,174,0,2.3,8,16
+2025,2025-12-05,Friday,16:30,C,82,82,0,2.3,6,12
+2025,2025-12-05,Friday,16:30,D,45,45,0,1.6,6,12
+2025,2025-12-05,Friday,16:30,E,55,55,0,2.5,4,8
+2025,2025-12-05,Friday,16:45,A,204,204,0,2.4,6,12
+2025,2025-12-05,Friday,16:45,B,210,210,0,1.9,8,16
+2025,2025-12-05,Friday,16:45,C,106,106,0,2.1,6,12
+2025,2025-12-05,Friday,16:45,D,48,48,0,1.0,6,12
+2025,2025-12-05,Friday,16:45,E,63,63,0,1.7,4,8
+2025,2025-12-05,Friday,17:00,A,303,245,58,3.6,6,12
+2025,2025-12-05,Friday,17:00,B,269,269,0,1.9,8,16
+2025,2025-12-05,Friday,17:00,C,121,121,0,1.8,6,12
+2025,2025-12-05,Friday,17:00,D,62,62,0,1.7,6,12
+2025,2025-12-05,Friday,17:00,E,89,89,0,2.2,4,8
+2025,2025-12-05,Friday,17:15,A,345,247,156,8.3,6,12
+2025,2025-12-05,Friday,17:15,B,278,278,0,2.4,8,16
+2025,2025-12-05,Friday,17:15,C,145,145,0,1.3,6,12
+2025,2025-12-05,Friday,17:15,D,78,78,0,1.3,6,12
+2025,2025-12-05,Friday,17:15,E,98,98,0,2.4,4,8
+2025,2025-12-05,Friday,17:30,A,317,247,226,13.5,6,12
+2025,2025-12-05,Friday,17:30,B,329,313,16,2.7,8,16
+2025,2025-12-05,Friday,17:30,C,163,163,0,1.8,6,12
+2025,2025-12-05,Friday,17:30,D,78,78,0,1.3,6,12
+2025,2025-12-05,Friday,17:30,E,94,94,0,2.4,4,8
+2025,2025-12-05,Friday,17:45,A,246,250,222,15.1,6,12
+2025,2025-12-05,Friday,17:45,B,247,263,0,1.7,8,16
+2025,2025-12-05,Friday,17:45,C,152,152,0,1.1,6,12
+2025,2025-12-05,Friday,17:45,D,67,67,0,1.1,6,12
+2025,2025-12-05,Friday,17:45,E,75,75,0,1.5,4,8
+2025,2025-12-05,Friday,18:00,A,194,237,179,13.9,6,12
+2025,2025-12-05,Friday,18:00,B,194,194,0,2.3,8,16
+2025,2025-12-05,Friday,18:00,C,105,105,0,1.3,6,12
+2025,2025-12-05,Friday,18:00,D,43,43,0,2.3,6,12
+2025,2025-12-05,Friday,18:00,E,56,56,0,1.3,4,8
+2025,2025-12-05,Friday,18:15,A,150,247,82,9.8,6,12
+2025,2025-12-05,Friday,18:15,B,135,135,0,1.2,8,16
+2025,2025-12-05,Friday,18:15,C,79,79,0,1.6,6,12
+2025,2025-12-05,Friday,18:15,D,40,40,0,2.4,6,12
+2025,2025-12-05,Friday,18:15,E,43,43,0,1.3,4,8
+2025,2025-12-05,Friday,18:30,A,144,226,0,3.5,6,12
+2025,2025-12-05,Friday,18:30,B,141,141,0,1.3,8,16
+2025,2025-12-05,Friday,18:30,C,64,64,0,2.5,6,12
+2025,2025-12-05,Friday,18:30,D,32,32,0,1.7,6,12
+2025,2025-12-05,Friday,18:30,E,46,46,0,2.0,4,8
+2025,2025-12-05,Friday,18:45,A,175,175,0,1.9,6,12
+2025,2025-12-05,Friday,18:45,B,167,167,0,1.5,8,16
+2025,2025-12-05,Friday,18:45,C,82,82,0,2.2,6,12
+2025,2025-12-05,Friday,18:45,D,37,37,0,1.2,6,12
+2025,2025-12-05,Friday,18:45,E,50,50,0,2.2,4,8
+2025,2025-12-05,Friday,19:00,A,268,239,29,2.0,6,12
+2025,2025-12-05,Friday,19:00,B,200,200,0,2.0,8,16
+2025,2025-12-05,Friday,19:00,C,122,122,0,1.7,6,12
+2025,2025-12-05,Friday,19:00,D,64,64,0,1.5,6,12
+2025,2025-12-05,Friday,19:00,E,78,78,0,2.1,4,8
+2025,2025-12-05,Friday,19:15,A,361,231,159,7.8,6,12
+2025,2025-12-05,Friday,19:15,B,345,334,11,2.0,8,16
+2025,2025-12-05,Friday,19:15,C,202,202,0,1.9,6,12
+2025,2025-12-05,Friday,19:15,D,85,85,0,2.3,6,12
+2025,2025-12-05,Friday,19:15,E,99,99,0,2.2,4,8
+2025,2025-12-05,Friday,19:30,A,441,248,352,18.0,6,12
+2025,2025-12-05,Friday,19:30,B,510,329,192,6.7,8,16
+2025,2025-12-05,Friday,19:30,C,236,236,0,2.0,6,12
+2025,2025-12-05,Friday,19:30,D,123,123,0,1.4,6,12
+2025,2025-12-05,Friday,19:30,E,155,123,32,4.0,4,8
+2025,2025-12-05,Friday,19:45,A,461,244,569,29.7,6,12
+2025,2025-12-05,Friday,19:45,B,424,316,301,12.6,8,16
+2025,2025-12-05,Friday,19:45,C,242,242,0,2.4,6,12
+2025,2025-12-05,Friday,19:45,D,113,113,0,2.2,6,12
+2025,2025-12-05,Friday,19:45,E,151,117,66,7.2,4,8
+2025,2025-12-05,Friday,20:00,A,335,249,655,40.0,6,12
+2025,2025-12-05,Friday,20:00,B,332,308,324,16.5,8,16
+2025,2025-12-05,Friday,20:00,C,171,171,0,1.3,6,12
+2025,2025-12-05,Friday,20:00,D,87,87,0,1.4,6,12
+2025,2025-12-05,Friday,20:00,E,104,115,55,9.0,4,8
+2025,2025-12-05,Friday,20:15,A,185,249,590,39.9,6,12
+2025,2025-12-05,Friday,20:15,B,198,319,203,13.3,8,16
+2025,2025-12-05,Friday,20:15,C,90,90,0,1.9,6,12
+2025,2025-12-05,Friday,20:15,D,42,42,0,1.5,6,12
+2025,2025-12-05,Friday,20:15,E,54,109,0,5.2,4,8
+2025,2025-12-05,Friday,20:30,A,87,236,442,34.0,6,12
+2025,2025-12-05,Friday,20:30,B,90,293,0,6.5,8,16
+2025,2025-12-05,Friday,20:30,C,46,46,0,2.5,6,12
+2025,2025-12-05,Friday,20:30,D,24,24,0,1.1,6,12
+2025,2025-12-05,Friday,20:30,E,25,25,0,1.4,4,8
+2025,2025-12-05,Friday,20:45,A,46,237,251,23.8,6,12
+2025,2025-12-05,Friday,20:45,B,45,45,0,1.5,8,16
+2025,2025-12-05,Friday,20:45,C,26,26,0,1.5,6,12
+2025,2025-12-05,Friday,20:45,D,11,11,0,2.3,6,12
+2025,2025-12-05,Friday,20:45,E,16,16,0,,4,8
+2025,2025-12-05,Friday,21:00,A,13,236,27,9.8,6,12
+2025,2025-12-05,Friday,21:00,B,13,13,0,2.3,8,16
+2025,2025-12-05,Friday,21:00,C,7,7,0,2.5,6,12
+2025,2025-12-05,Friday,21:00,D,3,3,0,1.9,6,12
+2025,2025-12-05,Friday,21:00,E,4,4,0,2.4,4,8
+2025,2025-12-05,Friday,21:15,A,12,39,0,1.9,6,12
+2025,2025-12-05,Friday,21:15,B,12,12,0,1.0,8,16
+2025,2025-12-05,Friday,21:15,C,6,6,0,2.2,6,12
+2025,2025-12-05,Friday,21:15,D,3,3,0,1.1,6,12
+2025,2025-12-05,Friday,21:15,E,3,3,0,2.1,4,8
+2025,2025-12-05,Friday,21:30,A,12,12,0,1.7,6,12
+2025,2025-12-05,Friday,21:30,B,11,11,0,1.9,8,16
+2025,2025-12-05,Friday,21:30,C,6,6,0,2.1,6,12
+2025,2025-12-05,Friday,21:30,D,3,3,0,1.5,6,12
+2025,2025-12-05,Friday,21:30,E,3,3,0,2.3,4,8
+2025,2025-12-05,Friday,21:45,A,12,12,0,1.5,6,12
+2025,2025-12-05,Friday,21:45,B,11,11,0,1.5,8,16
+2025,2025-12-05,Friday,21:45,C,6,6,0,1.7,6,12
+2025,2025-12-05,Friday,21:45,D,3,3,0,2.5,6,12
+2025,2025-12-05,Friday,21:45,E,4,4,0,1.5,4,8
+2025,2025-12-06,Saturday,12:00,A,48,48,0,1.5,6,12
+2025,2025-12-06,Saturday,12:00,B,48,48,0,1.9,8,16
+2025,2025-12-06,Saturday,12:00,C,25,25,0,1.7,6,12
+2025,2025-12-06,Saturday,12:00,D,11,11,0,1.6,6,12
+2025,2025-12-06,Saturday,12:00,E,14,14,0,2.1,4,8
+2025,2025-12-06,Saturday,12:15,A,61,61,0,1.5,6,12
+2025,2025-12-06,Saturday,12:15,B,65,65,0,1.2,8,16
+2025,2025-12-06,Saturday,12:15,C,36,36,0,1.3,6,12
+2025,2025-12-06,Saturday,12:15,D,15,15,0,2.1,6,12
+2025,2025-12-06,Saturday,12:15,E,19,19,0,1.4,4,8
+2025,2025-12-06,Saturday,12:30,A,89,89,0,1.8,6,12
+2025,2025-12-06,Saturday,12:30,B,105,105,0,1.4,8,16
+2025,2025-12-06,Saturday,12:30,C,49,49,0,1.5,6,12
+2025,2025-12-06,Saturday,12:30,D,24,24,0,1.3,6,12
+2025,2025-12-06,Saturday,12:30,E,30,30,0,1.5,4,8
+2025,2025-12-06,Saturday,12:45,A,114,114,0,2.4,6,12
+2025,2025-12-06,Saturday,12:45,B,124,124,0,2.5,8,16
+2025,2025-12-06,Saturday,12:45,C,64,64,0,2.0,6,12
+2025,2025-12-06,Saturday,12:45,D,26,26,0,1.6,6,12
+2025,2025-12-06,Saturday,12:45,E,38,38,0,1.6,4,8
+2025,2025-12-06,Saturday,13:00,A,128,128,0,2.1,6,12
+2025,2025-12-06,Saturday,13:00,B,121,121,0,1.7,8,16
+2025,2025-12-06,Saturday,13:00,C,75,75,0,1.1,6,12
+2025,2025-12-06,Saturday,13:00,D,32,32,0,2.4,6,12
+2025,2025-12-06,Saturday,13:00,E,43,43,0,2.3,4,8
+2025,2025-12-06,Saturday,13:15,A,121,121,0,1.3,6,12
+2025,2025-12-06,Saturday,13:15,B,117,117,0,2.4,8,16
+2025,2025-12-06,Saturday,13:15,C,66,66,0,1.8,6,12
+2025,2025-12-06,Saturday,13:15,D,31,31,0,1.2,6,12
+2025,2025-12-06,Saturday,13:15,E,32,32,0,1.1,4,8
+2025,2025-12-06,Saturday,13:30,A,109,109,0,1.9,6,12
+2025,2025-12-06,Saturday,13:30,B,103,103,0,1.8,8,16
+2025,2025-12-06,Saturday,13:30,C,61,61,0,1.5,6,12
+2025,2025-12-06,Saturday,13:30,D,27,27,0,1.5,6,12
+2025,2025-12-06,Saturday,13:30,E,32,32,0,1.1,4,8
+2025,2025-12-06,Saturday,13:45,A,103,103,0,1.8,6,12
+2025,2025-12-06,Saturday,13:45,B,96,96,0,2.4,8,16
+2025,2025-12-06,Saturday,13:45,C,53,53,0,1.7,6,12
+2025,2025-12-06,Saturday,13:45,D,25,25,0,1.3,6,12
+2025,2025-12-06,Saturday,13:45,E,30,30,0,1.4,4,8
+2025,2025-12-06,Saturday,14:00,A,108,108,0,1.9,6,12
+2025,2025-12-06,Saturday,14:00,B,87,87,0,1.5,8,16
+2025,2025-12-06,Saturday,14:00,C,50,50,0,1.1,6,12
+2025,2025-12-06,Saturday,14:00,D,27,27,0,1.4,6,12
+2025,2025-12-06,Saturday,14:00,E,36,36,0,1.7,4,8
+2025,2025-12-06,Saturday,14:15,A,111,111,0,2.1,6,12
+2025,2025-12-06,Saturday,14:15,B,105,105,0,1.2,8,16
+2025,2025-12-06,Saturday,14:15,C,64,64,0,1.8,6,12
+2025,2025-12-06,Saturday,14:15,D,27,27,0,1.2,6,12
+2025,2025-12-06,Saturday,14:15,E,31,31,0,1.8,4,8
+2025,2025-12-06,Saturday,14:30,A,116,116,0,2.0,6,12
+2025,2025-12-06,Saturday,14:30,B,124,124,0,2.2,8,16
+2025,2025-12-06,Saturday,14:30,C,60,60,0,2.0,6,12
+2025,2025-12-06,Saturday,14:30,D,28,28,0,1.2,6,12
+2025,2025-12-06,Saturday,14:30,E,32,32,0,1.6,4,8
+2025,2025-12-06,Saturday,14:45,A,130,130,0,1.3,6,12
+2025,2025-12-06,Saturday,14:45,B,136,136,0,1.5,8,16
+2025,2025-12-06,Saturday,14:45,C,60,60,0,1.7,6,12
+2025,2025-12-06,Saturday,14:45,D,32,32,0,1.2,6,12
+2025,2025-12-06,Saturday,14:45,E,35,35,0,1.8,4,8
+2025,2025-12-06,Saturday,15:00,A,143,143,0,2.3,6,12
+2025,2025-12-06,Saturday,15:00,B,136,136,0,2.2,8,16
+2025,2025-12-06,Saturday,15:00,C,71,71,0,1.5,6,12
+2025,2025-12-06,Saturday,15:00,D,32,32,0,1.3,6,12
+2025,2025-12-06,Saturday,15:00,E,41,41,0,1.8,4,8
+2025,2025-12-06,Saturday,15:15,A,153,153,0,2.2,6,12
+2025,2025-12-06,Saturday,15:15,B,144,144,0,2.3,8,16
+2025,2025-12-06,Saturday,15:15,C,68,68,0,1.2,6,12
+2025,2025-12-06,Saturday,15:15,D,36,36,0,2.0,6,12
+2025,2025-12-06,Saturday,15:15,E,39,39,0,1.0,4,8
+2025,2025-12-06,Saturday,15:30,A,159,159,0,1.7,6,12
+2025,2025-12-06,Saturday,15:30,B,173,173,0,1.5,8,16
+2025,2025-12-06,Saturday,15:30,C,93,93,0,2.1,6,12
+2025,2025-12-06,Saturday,15:30,D,42,42,0,2.0,6,12
+2025,2025-12-06,Saturday,15:30,E,52,52,0,1.1,4,8
+2025,2025-12-06,Saturday,15:45,A,239,237,2,2.4,6,12
+2025,2025-12-06,Saturday,15:45,B,228,228,0,1.0,8,16
+2025,2025-12-06,Saturday,15:45,C,115,115,0,1.2,6,12
+2025,2025-12-06,Saturday,15:45,D,55,55,0,1.4,6,12
+2025,2025-12-06,Saturday,15:45,E,62,62,0,1.9,4,8
+2025,2025-12-06,Saturday,16:00,A,305,248,59,4.4,6,12
+2025,2025-12-06,Saturday,16:00,B,312,312,0,1.1,8,16
+2025,2025-12-06,Saturday,16:00,C,155,155,0,1.2,6,12
+2025,2025-12-06,Saturday,16:00,C,155,155,0,1.2,6,12
+2025,2025-12-06,Saturday,16:00,D,71,71,0,1.8,6,12
+2025,2025-12-06,Saturday,16:00,E,94,94,0,1.1,4,8
+2025,2025-12-06,Saturday,16:15,A,336,234,161,8.1,6,12
+2025,2025-12-06,Saturday,16:15,B,373,316,57,3.6,8,16
+2025,2025-12-06,Saturday,16:15,C,187,187,0,2.2,6,12
+2025,2025-12-06,Saturday,16:15,D,89,89,0,1.5,6,12
+2025,2025-12-06,Saturday,16:15,E,118,118,0,2.1,4,8
+2025,2025-12-06,Saturday,16:30,A,354,240,275,15.0,6,12
+2025,2025-12-06,Saturday,16:30,B,390,326,122,6.4,8,16
+2025,2025-12-06,Saturday,16:30,C,201,201,0,1.5,6,12
+2025,2025-12-06,Saturday,16:30,D,90,90,0,1.6,6,12
+2025,2025-12-06,Saturday,16:30,E,108,108,0,1.8,4,8
+2025,2025-12-06,Saturday,16:45,A,292,235,332,21.2,6,12
+2025,2025-12-06,Saturday,16:45,B,313,314,121,6.7,8,16
+2025,2025-12-06,Saturday,16:45,C,155,155,0,1.5,6,12
+2025,2025-12-06,Saturday,16:45,D,74,74,0,1.9,6,12
+2025,2025-12-06,Saturday,16:45,E,87,87,0,1.0,4,8
+2025,2025-12-06,Saturday,17:00,A,216,233,315,21.4,6,12
+2025,2025-12-06,Saturday,17:00,B,216,332,5,4.8,8,16
+2025,2025-12-06,Saturday,17:00,C,129,129,0,1.6,6,12
+2025,2025-12-06,Saturday,17:00,D,56,56,0,2.0,6,12
+2025,2025-12-06,Saturday,17:00,E,69,69,0,1.4,4,8
+2025,2025-12-06,Saturday,17:15,A,194,234,275,19.4,6,12
+2025,2025-12-06,Saturday,17:15,B,184,189,0,2.1,8,16
+2025,2025-12-06,Saturday,17:15,C,92,92,0,2.2,6,12
+2025,2025-12-06,Saturday,17:15,D,41,41,0,2.3,6,12
+2025,2025-12-06,Saturday,17:15,E,56,56,0,,4,8
+2025,2025-12-06,Saturday,17:30,A,188,245,217,17.5,6,12
+2025,2025-12-06,Saturday,17:30,B,165,165,0,1.9,8,16
+2025,2025-12-06,Saturday,17:30,C,101,101,0,1.5,6,12
+2025,2025-12-06,Saturday,17:30,D,44,44,0,1.0,6,12
+2025,2025-12-06,Saturday,17:30,E,56,56,0,2.1,4,8
+2025,2025-12-06,Saturday,17:45,A,184,234,167,14.2,6,12
+2025,2025-12-06,Saturday,17:45,B,173,173,0,1.5,8,16
+2025,2025-12-06,Saturday,17:45,C,106,106,0,1.3,6,12
+2025,2025-12-06,Saturday,17:45,D,54,54,0,1.9,6,12
+2025,2025-12-06,Saturday,17:45,E,57,57,0,1.5,4,8
+2025,2025-12-06,Saturday,18:00,A,185,245,107,10.2,6,12
+2025,2025-12-06,Saturday,18:00,B,193,193,0,1.9,8,16
+2025,2025-12-06,Saturday,18:00,C,98,98,0,2.5,6,12
+2025,2025-12-06,Saturday,18:00,D,44,44,0,2.3,6,12
+2025,2025-12-06,Saturday,18:00,E,56,56,0,2.1,4,8
+2025,2025-12-06,Saturday,18:15,A,177,237,48,6.1,6,12
+2025,2025-12-06,Saturday,18:15,B,167,167,0,1.4,8,16
+2025,2025-12-06,Saturday,18:15,C,92,92,0,1.1,6,12
+2025,2025-12-06,Saturday,18:15,D,43,43,0,2.4,6,12
+2025,2025-12-06,Saturday,18:15,E,55,55,0,1.5,4,8
+2025,2025-12-06,Saturday,18:30,A,162,210,0,2.7,6,12
+2025,2025-12-06,Saturday,18:30,B,183,183,0,1.2,8,16
+2025,2025-12-06,Saturday,18:30,C,98,98,0,2.4,6,12
+2025,2025-12-06,Saturday,18:30,D,43,43,0,2.4,6,12
+2025,2025-12-06,Saturday,18:30,E,56,56,0,2.5,4,8
+2025,2025-12-06,Saturday,18:45,A,273,244,29,2.7,6,12
+2025,2025-12-06,Saturday,18:45,B,231,231,0,2.2,8,16
+2025,2025-12-06,Saturday,18:45,C,140,140,0,1.1,6,12
+2025,2025-12-06,Saturday,18:45,D,65,65,0,2.3,6,12
+2025,2025-12-06,Saturday,18:45,E,77,77,0,2.0,4,8
+2025,2025-12-06,Saturday,19:00,A,411,233,207,9.0,6,12
+2025,2025-12-06,Saturday,19:00,B,373,313,60,3.2,8,16
+2025,2025-12-06,Saturday,19:00,C,199,199,0,2.4,6,12
+2025,2025-12-06,Saturday,19:00,D,93,93,0,2.3,6,12
+2025,2025-12-06,Saturday,19:00,E,126,121,5,2.4,4,8
+2025,2025-12-06,Saturday,19:15,A,495,244,458,22.0,6,12
+2025,2025-12-06,Saturday,19:15,B,558,312,306,10.7,8,16
+2025,2025-12-06,Saturday,19:15,C,223,223,0,1.3,6,12
+2025,2025-12-06,Saturday,19:15,D,127,127,0,2.5,6,12
+2025,2025-12-06,Saturday,19:15,E,174,114,65,6.4,4,8
+2025,2025-12-06,Saturday,19:30,A,544,232,770,39.3,6,12
+2025,2025-12-06,Saturday,19:30,B,494,328,472,20.1,8,16
+2025,2025-12-06,Saturday,19:30,C,254,236,18,2.9,6,12
+2025,2025-12-06,Saturday,19:30,D,116,116,0,2.2,6,12
+2025,2025-12-06,Saturday,19:30,E,167,122,110,12.3,4,8
+2025,2025-12-06,Saturday,19:45,A,390,231,929,54.3,6,12
+2025,2025-12-06,Saturday,19:45,B,330,323,479,23.3,8,16
+2025,2025-12-06,Saturday,19:45,C,207,225,0,2.5,6,12
+2025,2025-12-06,Saturday,19:45,D,93,93,0,1.7,6,12
+2025,2025-12-06,Saturday,19:45,E,102,115,97,14.4,4,8
+2025,2025-12-06,Saturday,20:00,A,196,245,880,57.1,6,12
+2025,2025-12-06,Saturday,20:00,B,218,314,384,22.2,8,16
+2025,2025-12-06,Saturday,20:00,C,101,101,0,1.4,6,12
+2025,2025-12-06,Saturday,20:00,D,54,54,0,1.6,6,12
+2025,2025-12-06,Saturday,20:00,E,58,123,31,9.5,4,8
+2025,2025-12-06,Saturday,20:15,A,107,236,751,51.9,6,12
+2025,2025-12-06,Saturday,20:15,B,87,317,153,13.9,8,16
+2025,2025-12-06,Saturday,20:15,C,44,44,0,1.7,6,12
+2025,2025-12-06,Saturday,20:15,D,23,23,0,1.3,6,12
+2025,2025-12-06,Saturday,20:15,E,26,57,0,3.0,4,8
+2025,2025-12-06,Saturday,20:30,A,26,249,528,40.6,6,12
+2025,2025-12-06,Saturday,20:30,B,25,178,0,4.9,8,16
+2025,2025-12-06,Saturday,20:30,C,14,14,0,1.1,6,12
+2025,2025-12-06,Saturday,20:30,D,6,6,0,1.7,6,12
+2025,2025-12-06,Saturday,20:30,E,9,9,0,2.0,4,8
+2025,2025-12-06,Saturday,20:45,A,16,246,298,27.8,6,12
+2025,2025-12-06,Saturday,20:45,B,16,16,0,2.4,8,16
+2025,2025-12-06,Saturday,20:45,C,8,8,0,2.3,6,12
+2025,2025-12-06,Saturday,20:45,D,3,3,0,2.3,6,12
+2025,2025-12-06,Saturday,20:45,E,4,4,0,1.2,4,8
+2025,2025-12-06,Saturday,21:00,A,13,245,67,13.6,6,12
+2025,2025-12-06,Saturday,21:00,B,12,12,0,1.7,8,16
+2025,2025-12-06,Saturday,21:00,C,7,7,0,1.9,6,12
+2025,2025-12-06,Saturday,21:00,D,3,3,0,2.4,6,12
+2025,2025-12-06,Saturday,21:00,E,4,4,0,2.3,4,8
+2025,2025-12-06,Saturday,21:15,A,14,81,0,4.6,6,12
+2025,2025-12-06,Saturday,21:15,B,12,12,0,1.6,8,16
+2025,2025-12-06,Saturday,21:15,C,7,7,0,2.4,6,12
+2025,2025-12-06,Saturday,21:15,D,3,3,0,1.2,6,12
+2025,2025-12-06,Saturday,21:15,E,3,3,0,2.3,4,8
+2025,2025-12-06,Saturday,21:30,A,14,14,0,1.5,6,12
+2025,2025-12-06,Saturday,21:30,B,12,12,0,1.2,8,16
+2025,2025-12-06,Saturday,21:30,C,7,7,0,2.2,6,12
+2025,2025-12-06,Saturday,21:30,D,3,3,0,1.3,6,12
+2025,2025-12-06,Saturday,21:30,E,4,4,0,1.6,4,8
+2025,2025-12-06,Saturday,21:45,A,13,13,0,1.4,6,12
+2025,2025-12-06,Saturday,21:45,B,12,12,0,1.4,8,16
+2025,2025-12-06,Saturday,21:45,C,7,7,0,2.1,6,12
+2025,2025-12-06,Saturday,21:45,D,3,3,0,1.9,6,12
+2025,2025-12-06,Saturday,21:45,E,4,4,0,2.1,4,8
+2025,2025-12-07,Sunday,12:00,A,35,35,0,2.1,6,12
+2025,2025-12-07,Sunday,12:00,B,34,34,0,1.8,8,16
+2025,2025-12-07,Sunday,12:00,C,18,18,0,1.3,6,12
+2025,2025-12-07,Sunday,12:00,D,9,9,0,1.4,6,12
+2025,2025-12-07,Sunday,12:00,E,11,11,0,2.1,4,8
+2025,2025-12-07,Sunday,12:15,A,40,40,0,1.8,6,12
+2025,2025-12-07,Sunday,12:15,B,35,35,0,2.0,8,16
+2025,2025-12-07,Sunday,12:15,C,21,21,0,2.5,6,12
+2025,2025-12-07,Sunday,12:15,D,9,9,0,1.4,6,12
+2025,2025-12-07,Sunday,12:15,E,13,13,0,,4,8
+2025,2025-12-07,Sunday,12:30,A,47,47,0,1.2,6,12
+2025,2025-12-07,Sunday,12:30,B,44,44,0,2.3,8,16
+2025,2025-12-07,Sunday,12:30,C,23,23,0,1.6,6,12
+2025,2025-12-07,Sunday,12:30,D,12,12,0,2.1,6,12
+2025,2025-12-07,Sunday,12:30,E,16,16,0,2.1,4,8
+2025,2025-12-07,Sunday,12:45,A,47,47,0,1.0,6,12
+2025,2025-12-07,Sunday,12:45,B,56,56,0,1.2,8,16
+2025,2025-12-07,Sunday,12:45,C,29,29,0,1.7,6,12
+2025,2025-12-07,Sunday,12:45,D,14,14,0,2.4,6,12
+2025,2025-12-07,Sunday,12:45,E,15,15,0,2.0,4,8
+2025,2025-12-07,Sunday,13:00,A,57,57,0,2.5,6,12
+2025,2025-12-07,Sunday,13:00,B,63,63,0,1.2,8,16
+2025,2025-12-07,Sunday,13:00,C,34,34,0,1.0,6,12
+2025,2025-12-07,Sunday,13:00,D,15,15,0,1.3,6,12
+2025,2025-12-07,Sunday,13:00,E,19,19,0,1.9,4,8
+2025,2025-12-07,Sunday,13:15,A,74,74,0,1.8,6,12
+2025,2025-12-07,Sunday,13:15,B,63,63,0,1.7,8,16
+2025,2025-12-07,Sunday,13:15,C,35,35,0,,6,12
+2025,2025-12-07,Sunday,13:15,D,16,16,0,1.2,6,12
+2025,2025-12-07,Sunday,13:15,E,20,20,0,1.9,4,8
+2025,2025-12-07,Sunday,13:30,A,80,80,0,2.0,6,12
+2025,2025-12-07,Sunday,13:30,B,76,76,0,1.2,8,16
+2025,2025-12-07,Sunday,13:30,C,40,40,0,1.9,6,12
+2025,2025-12-07,Sunday,13:30,D,17,17,0,1.6,6,12
+2025,2025-12-07,Sunday,13:30,E,24,24,0,1.4,4,8
+2025,2025-12-07,Sunday,13:45,A,94,94,0,2.4,6,12
+2025,2025-12-07,Sunday,13:45,B,84,84,0,2.3,8,16
+2025,2025-12-07,Sunday,13:45,C,43,43,0,2.4,6,12
+2025,2025-12-07,Sunday,13:45,D,22,22,0,1.4,6,12
+2025,2025-12-07,Sunday,13:45,E,23,23,0,1.7,4,8
+2025,2025-12-07,Sunday,14:00,A,94,94,0,2.2,6,12
+2025,2025-12-07,Sunday,14:00,B,100,100,0,1.5,8,16
+2025,2025-12-07,Sunday,14:00,C,57,57,0,2.1,6,12
+2025,2025-12-07,Sunday,14:00,D,23,23,0,1.8,6,12
+2025,2025-12-07,Sunday,14:00,E,36,36,0,1.7,4,8
+2025,2025-12-07,Sunday,14:15,A,137,137,0,1.9,6,12
+2025,2025-12-07,Sunday,14:15,B,110,110,0,1.0,8,16
+2025,2025-12-07,Sunday,14:15,C,61,61,0,2.2,6,12
+2025,2025-12-07,Sunday,14:15,D,29,29,0,1.6,6,12
+2025,2025-12-07,Sunday,14:15,E,42,42,0,1.0,4,8
+2025,2025-12-07,Sunday,14:30,A,169,169,0,1.7,6,12
+2025,2025-12-07,Sunday,14:30,B,147,147,0,1.2,8,16
+2025,2025-12-07,Sunday,14:30,C,80,80,0,1.6,6,12
+2025,2025-12-07,Sunday,14:30,D,36,36,0,1.5,6,12
+2025,2025-12-07,Sunday,14:30,E,45,45,0,1.1,4,8
+2025,2025-12-07,Sunday,14:45,A,174,174,0,2.3,6,12
+2025,2025-12-07,Sunday,14:45,B,171,171,0,1.7,8,16
+2025,2025-12-07,Sunday,14:45,C,105,105,0,1.4,6,12
+2025,2025-12-07,Sunday,14:45,D,43,43,0,1.6,6,12
+2025,2025-12-07,Sunday,14:45,E,54,54,0,1.8,4,8
+2025,2025-12-07,Sunday,15:00,A,195,195,0,1.5,6,12
+2025,2025-12-07,Sunday,15:00,B,172,172,0,1.5,8,16
+2025,2025-12-07,Sunday,15:00,C,107,107,0,2.0,6,12
+2025,2025-12-07,Sunday,15:00,D,42,42,0,2.1,6,12
+2025,2025-12-07,Sunday,15:00,E,59,59,0,1.6,4,8
+2025,2025-12-07,Sunday,15:15,A,162,162,0,1.3,6,12
+2025,2025-12-07,Sunday,15:15,B,158,158,0,2.4,8,16
+2025,2025-12-07,Sunday,15:15,C,101,101,0,1.9,6,12
+2025,2025-12-07,Sunday,15:15,D,50,50,0,1.5,6,12
+2025,2025-12-07,Sunday,15:15,E,51,51,0,2.3,4,8
+2025,2025-12-07,Sunday,15:30,A,148,148,0,1.8,6,12
+2025,2025-12-07,Sunday,15:30,B,166,166,0,1.2,8,16
+2025,2025-12-07,Sunday,15:30,C,87,87,0,1.5,6,12
+2025,2025-12-07,Sunday,15:30,D,41,41,0,1.3,6,12
+2025,2025-12-07,Sunday,15:30,E,46,46,0,1.1,4,8
+2025,2025-12-07,Sunday,15:45,A,181,181,0,2.4,6,12
+2025,2025-12-07,Sunday,15:45,B,165,165,0,1.4,8,16
+2025,2025-12-07,Sunday,15:45,C,83,83,0,2.1,6,12
+2025,2025-12-07,Sunday,15:45,D,44,44,0,1.6,6,12
+2025,2025-12-07,Sunday,15:45,E,56,56,0,2.4,4,8
+2025,2025-12-07,Sunday,16:00,A,197,197,0,2.1,6,12
+2025,2025-12-07,Sunday,16:00,B,202,202,0,1.8,8,16
+2025,2025-12-07,Sunday,16:00,C,112,112,0,1.6,6,12
+2025,2025-12-07,Sunday,16:00,D,59,59,0,1.3,6,12
+2025,2025-12-07,Sunday,16:00,E,73,73,0,1.7,4,8
+2025,2025-12-07,Sunday,16:15,A,278,233,45,3.7,6,12
+2025,2025-12-07,Sunday,16:15,B,268,268,0,2.4,8,16
+2025,2025-12-07,Sunday,16:15,C,144,144,0,2.2,6,12
+2025,2025-12-07,Sunday,16:15,D,72,72,0,1.3,6,12
+2025,2025-12-07,Sunday,16:15,E,80,80,0,1.9,4,8
+2025,2025-12-07,Sunday,16:30,A,338,237,145,7.9,6,12
+2025,2025-12-07,Sunday,16:30,B,339,318,21,1.7,8,16
+2025,2025-12-07,Sunday,16:30,C,196,196,0,2.4,6,12
+2025,2025-12-07,Sunday,16:30,D,78,78,0,1.6,6,12
+2025,2025-12-07,Sunday,16:30,E,100,100,0,1.1,4,8
+2025,2025-12-07,Sunday,16:45,A,310,249,206,12.4,6,12
+2025,2025-12-07,Sunday,16:45,B,387,333,75,3.8,8,16
+2025,2025-12-07,Sunday,16:45,C,188,188,0,1.5,6,12
+2025,2025-12-07,Sunday,16:45,D,87,87,0,1.1,6,12
+2025,2025-12-07,Sunday,16:45,E,106,106,0,1.9,4,8
+2025,2025-12-07,Sunday,17:00,A,269,233,242,15.8,6,12
+2025,2025-12-07,Sunday,17:00,B,294,321,49,5.3,8,16
+2025,2025-12-07,Sunday,17:00,C,140,140,0,2.0,6,12
+2025,2025-12-07,Sunday,17:00,D,74,74,0,2.4,6,12
+2025,2025-12-07,Sunday,17:00,E,83,83,0,2.3,4,8
+2025,2025-12-07,Sunday,17:15,A,181,241,182,15.3,6,12
+2025,2025-12-07,Sunday,17:15,B,190,239,0,2.3,8,16
+2025,2025-12-07,Sunday,17:15,C,113,113,0,1.7,6,12
+2025,2025-12-07,Sunday,17:15,D,54,54,0,1.4,6,12
+2025,2025-12-07,Sunday,17:15,E,56,56,0,2.3,4,8
+2025,2025-12-07,Sunday,17:30,A,138,239,81,9.4,6,12
+2025,2025-12-07,Sunday,17:30,B,160,160,0,1.7,8,16
+2025,2025-12-07,Sunday,17:30,C,76,76,0,1.5,6,12
+2025,2025-12-07,Sunday,17:30,D,39,39,0,1.8,6,12
+2025,2025-12-07,Sunday,17:30,E,46,46,0,1.8,4,8
+2025,2025-12-07,Sunday,17:45,A,136,217,0,4.1,6,12
+2025,2025-12-07,Sunday,17:45,B,128,128,0,1.5,8,16
+2025,2025-12-07,Sunday,17:45,C,74,74,0,1.2,6,12
+2025,2025-12-07,Sunday,17:45,D,36,36,0,1.2,6,12
+2025,2025-12-07,Sunday,17:45,E,43,43,0,1.2,4,8
+2025,2025-12-07,Sunday,18:00,A,148,148,0,1.0,6,12
+2025,2025-12-07,Sunday,18:00,B,169,169,0,1.9,8,16
+2025,2025-12-07,Sunday,18:00,C,78,78,0,1.7,6,12
+2025,2025-12-07,Sunday,18:00,D,44,44,0,1.8,6,12
+2025,2025-12-07,Sunday,18:00,E,50,50,0,2.3,4,8
+2025,2025-12-07,Sunday,18:15,A,228,228,0,1.3,6,12
+2025,2025-12-07,Sunday,18:15,B,234,234,0,1.2,8,16
+2025,2025-12-07,Sunday,18:15,C,141,141,0,2.4,6,12
+2025,2025-12-07,Sunday,18:15,D,62,62,0,2.3,6,12
+2025,2025-12-07,Sunday,18:15,E,71,71,0,1.8,4,8
+2025,2025-12-07,Sunday,18:30,A,386,233,153,5.8,6,12
+2025,2025-12-07,Sunday,18:30,B,369,308,61,3.5,8,16
+2025,2025-12-07,Sunday,18:30,C,197,197,0,1.9,6,12
+2025,2025-12-07,Sunday,18:30,D,96,96,0,2.1,6,12
+2025,2025-12-07,Sunday,18:30,E,125,121,4,2.7,4,8
+2025,2025-12-07,Sunday,18:45,A,453,241,365,17.7,6,12
+2025,2025-12-07,Sunday,18:45,B,492,316,237,8.2,8,16
+2025,2025-12-07,Sunday,18:45,C,249,233,16,2.7,6,12
+2025,2025-12-07,Sunday,18:45,D,119,119,0,2.3,6,12
+2025,2025-12-07,Sunday,18:45,E,163,122,45,4.2,4,8
+2025,2025-12-07,Sunday,19:00,A,465,242,588,30.9,6,12
+2025,2025-12-07,Sunday,19:00,B,485,290,432,17.9,8,16
+2025,2025-12-07,Sunday,19:00,C,291,235,72,3.8,6,12
+2025,2025-12-07,Sunday,19:00,D,120,120,0,1.5,6,12
+2025,2025-12-07,Sunday,19:00,E,172,122,95,9.8,4,8
+2025,2025-12-07,Sunday,19:15,A,364,250,702,41.5,6,12
+2025,2025-12-07,Sunday,19:15,B,326,316,442,22.6,8,16
+2025,2025-12-07,Sunday,19:15,C,199,238,,4.8,6,12
+2025,2025-12-07,Sunday,19:15,D,94,94,0,1.6,6,12
+2025,2025-12-07,Sunday,19:15,E,121,122,94,14.0,4,8
+2025,2025-12-07,Sunday,19:30,A,214,244,672,43.8,6,12
+2025,2025-12-07,Sunday,19:30,B,206,318,330,19.5,8,16
+2025,2025-12-07,Sunday,19:30,C,115,148,0,2.6,6,12
+2025,2025-12-07,Sunday,19:30,D,49,49,0,1.5,6,12
+2025,2025-12-07,Sunday,19:30,E,64,119,38,9.7,4,8
+2025,2025-12-07,Sunday,19:45,A,101,250,524,38.9,6,12
+2025,2025-12-07,Sunday,19:45,B,96,329,96,11.2,8,16
+2025,2025-12-07,Sunday,19:45,C,51,51,0,2.4,6,12
+2025,2025-12-07,Sunday,19:45,D,24,24,0,2.1,6,12
+2025,2025-12-07,Sunday,19:45,E,30,68,0,4.1,4,8
+2025,2025-12-07,Sunday,20:00,A,57,240,341,28.5,6,12
+2025,2025-12-07,Sunday,20:00,B,54,150,0,3.9,8,16
+2025,2025-12-07,Sunday,20:00,C,33,33,0,2.0,6,12
+2025,2025-12-07,Sunday,20:00,D,14,14,0,1.5,6,12
+2025,2025-12-07,Sunday,20:00,D,14,14,0,1.5,6,12
+2025,2025-12-07,Sunday,20:00,E,18,18,0,2.5,4,8
+2025,2025-12-07,Sunday,20:15,A,40,241,140,16.9,6,12
+2025,2025-12-07,Sunday,20:15,B,41,41,0,1.5,8,16
+2025,2025-12-07,Sunday,20:15,C,21,21,0,1.9,6,12
+2025,2025-12-07,Sunday,20:15,D,10,10,0,1.7,6,12
+2025,2025-12-07,Sunday,20:15,E,13,13,0,1.1,4,8
+2025,2025-12-07,Sunday,20:30,A,13,153,0,5.5,6,12
+2025,2025-12-07,Sunday,20:30,B,13,13,0,2.3,8,16
+2025,2025-12-07,Sunday,20:30,C,7,7,0,1.3,6,12
+2025,2025-12-07,Sunday,20:30,D,3,3,0,1.2,6,12
+2025,2025-12-07,Sunday,20:30,E,4,4,0,1.0,4,8
+2025,2025-12-07,Sunday,20:45,A,13,13,0,1.4,6,12
+2025,2025-12-07,Sunday,20:45,B,10,10,0,2.0,8,16
+2025,2025-12-07,Sunday,20:45,C,6,6,0,2.5,6,12
+2025,2025-12-07,Sunday,20:45,D,3,3,0,1.9,6,12
+2025,2025-12-07,Sunday,20:45,E,4,4,0,2.1,4,8
+2025,2025-12-07,Sunday,21:00,A,13,13,0,2.3,6,12
+2025,2025-12-07,Sunday,21:00,B,12,12,0,2.0,8,16
+2025,2025-12-07,Sunday,21:00,C,6,6,0,2.4,6,12
+2025,2025-12-07,Sunday,21:00,D,3,3,0,2.0,6,12
+2025,2025-12-07,Sunday,21:00,E,4,4,0,1.6,4,8
+2025,2025-12-07,Sunday,21:15,A,13,13,0,1.0,6,12
+2025,2025-12-07,Sunday,21:15,B,12,12,0,2.1,8,16
+2025,2025-12-07,Sunday,21:15,C,7,7,0,1.3,6,12
+2025,2025-12-07,Sunday,21:15,D,3,3,0,2.0,6,12
+2025,2025-12-07,Sunday,21:15,E,4,4,0,1.7,4,8
+2025,2025-12-07,Sunday,21:30,A,13,13,0,2.0,6,12
+2025,2025-12-07,Sunday,21:30,B,12,12,0,1.4,8,16
+2025,2025-12-07,Sunday,21:30,C,6,6,0,2.3,6,12
+2025,2025-12-07,Sunday,21:30,D,3,3,0,1.8,6,12
+2025,2025-12-07,Sunday,21:30,E,4,4,0,2.0,4,8
+2025,2025-12-07,Sunday,21:45,A,13,13,0,1.8,6,12
+2025,2025-12-07,Sunday,21:45,B,12,12,0,1.5,8,16
+2025,2025-12-07,Sunday,21:45,C,7,7,0,2.0,6,12
+2025,2025-12-07,Sunday,21:45,D,3,3,0,2.1,6,12
+2025,2025-12-07,Sunday,21:45,E,3,3,0,1.5,4,8
+</script>
+<script type="text/csv" id="csv-performance_schedule">
+festival_year,date,day,stage,artist,start_time,end_time,expected_draw
+2024,2024-12-06,Friday,Main Stage,The Copper Lanterns,16:00,17:00,Low
+2024,2024-12-06,Friday,Grove Stage,Mae & the Driftwood,16:30,17:20,Low
+2024,2024-12-06,Friday,Peach Stage,Static Bloom,17:30,18:30,Medium
+2024,2024-12-06,Friday,Main Stage,Harbor Lights,18:30,19:45,High
+2024,2024-12-06,Friday,Grove Stage,Juniper Coast,19:15,20:15,Low
+2024,2024-12-06,Friday,Main Stage,Velvet Horizon,20:45,22:15,Headliner
+2024,2024-12-07,Saturday,Grove Stage,Ashford Lane,13:00,13:50,Low
+2024,2024-12-07,Saturday,Peach Stage,Kite Season,14:00,15:00,Low
+2024,2024-12-07,Saturday,Main Stage,Rosa Delgado,15:00,16:00,Medium
+2024,2024-12-07,Saturday,Main Stage,Neon Orchard,17:30,18:45,High
+2024,2024-12-07,Saturday,Grove Stage,The Pinecone Choir,18:00,19:00,Low
+2024,2024-12-07,Saturday,Peach Stage,Saltwater Radio,19:00,20:00,Medium
+2024,2024-12-07,Saturday,Main Stage,Midnight Atlas,20:30,22:00,Headliner
+2024,2024-12-08,Sunday,Grove Stage,Little Fable,13:00,13:50,Low
+2024,2024-12-08,Sunday,Peach Stage,Gold Thread,14:30,15:30,Medium
+2024,2024-12-08,Sunday,Main Stage,Cedar & Smoke,16:00,17:00,Low
+2024,2024-12-08,Sunday,Main Stage,The Wild Parade,17:45,19:00,High
+2024,2024-12-08,Sunday,Peach Stage,Lila Moon,18:30,19:30,Low
+2024,2024-12-08,Sunday,Main Stage,Summit Avenue,20:00,21:30,Headliner
+2025,2025-12-05,Friday,Main Stage,Paper Airplanes,16:00,17:00,Low
+2025,2025-12-05,Friday,Grove Stage,Oliver Kane,16:45,17:35,Low
+2025,2025-12-05,Friday,Peach Stage,Bright Coastline,17:30,18:30,Medium
+2025,2025-12-05,Friday,Main Stage,The Marigolds,18:30,19:45,High
+2025,2025-12-05,Friday,Grove Stage,Hollow Pines,19:30,20:30,Low
+2025,2025-12-05,Friday,Main Stage,Starling Avenue,20:45,22:15,Headliner
+2025,2025-12-06,Saturday,Grove Stage,Fern & Fable,13:00,13:50,Low
+2025,2025-12-06,Saturday,Peach Stage,Coastal Drive,14:00,15:00,Medium
+2025,2025-12-06,Saturday,Main Stage,June Avery,15:30,16:30,Low
+2025,2025-12-06,Saturday,Main Stage,Echo Valley,17:30,18:45,High
+2025,2025-12-06,Saturday,Grove Stage,The Sundials,18:15,19:15,Low
+2025,2025-12-06,Saturday,Peach Stage,Red Clay Revival,19:00,20:00,Medium
+2025,2025-12-06,Saturday,Main Stage,Northern Lights Club,20:30,22:00,Headliner
+2025,2025-12-07,Sunday,Grove Stage,Blue Heron,13:00,13:50,Low
+2025,2025-12-07,Sunday,Peach Stage,The Sweet Teas,14:30,15:30,Low
+2025,2025-12-07,Sunday,Main Stage,Magnolia Fire,16:00,17:00,Medium
+2025,2025-12-07,Sunday,Main Stage,Glass Canyon,17:45,19:00,High
+2025,2025-12-07,Sunday,Peach Stage,Wren Collins,18:30,19:30,Low
+2025,2025-12-07,Sunday,Main Stage,Atlas & the Tide,20:00,21:30,Headliner
+</script>
+<script type="text/csv" id="csv-weather">
+festival_year,date,day,hour,temperature_f,precipitation_in,conditions
+2024,2024-12-06,Friday,15:00,63,0.0,Clear
+2024,2024-12-06,Friday,16:00,62,0.0,Clear
+2024,2024-12-06,Friday,17:00,60,0.0,Cloudy
+2024,2024-12-06,Friday,18:00,60,0.0,Partly cloudy
+2024,2024-12-06,Friday,19:00,59,0.0,Cloudy
+2024,2024-12-06,Friday,20:00,58,0.0,Clear
+2024,2024-12-06,Friday,21:00,54,0.0,Cloudy
+2024,2024-12-07,Saturday,12:00,59,0.0,Clear
+2024,2024-12-07,Saturday,13:00,60,0.0,Partly cloudy
+2024,2024-12-07,Saturday,14:00,62,0.0,Cloudy
+2024,2024-12-07,Saturday,15:00,63,0.0,Clear
+2024,2024-12-07,Saturday,16:00,62,0.0,Cloudy
+2024,2024-12-07,Saturday,17:00,60,0.0,Cloudy
+2024,2024-12-07,Saturday,18:00,61,0.0,Cloudy
+2024,2024-12-07,Saturday,19:00,54,0.21,Rain
+2024,2024-12-07,Saturday,20:00,54,0.2,Rain
+2024,2024-12-07,Saturday,21:00,54,0.0,Cloudy
+2024,2024-12-08,Sunday,12:00,60,0.0,Clear
+2024,2024-12-08,Sunday,13:00,60,0.0,Clear
+2024,2024-12-08,Sunday,14:00,61,0.0,Clear
+2024,2024-12-08,Sunday,15:00,63,0.0,Partly cloudy
+2024,2024-12-08,Sunday,16:00,61,0.0,Clear
+2024,2024-12-08,Sunday,17:00,63,0.0,Clear
+2024,2024-12-08,Sunday,18:00,59,0.0,Cloudy
+2024,2024-12-08,Sunday,19:00,58,0.0,Clear
+2024,2024-12-08,Sunday,20:00,59,0.0,Cloudy
+2024,2024-12-08,Sunday,21:00,57,0.0,Partly cloudy
+2025,2025-12-05,Friday,15:00,58,0.0,Clear
+2025,2025-12-05,Friday,16:00,59,0.0,Clear
+2025,2025-12-05,Friday,17:00,57,0.0,Cloudy
+2025,2025-12-05,Friday,18:00,57,0.0,Clear
+2025,2025-12-05,Friday,19:00,53,0.22,Rain
+2025,2025-12-05,Friday,20:00,53,0.18,Rain
+2025,2025-12-05,Friday,21:00,56,0.0,Clear
+2025,2025-12-06,Saturday,12:00,58,0.0,Cloudy
+2025,2025-12-06,Saturday,13:00,58,0.0,Clear
+2025,2025-12-06,Saturday,14:00,60,0.0,Clear
+2025,2025-12-06,Saturday,15:00,61,0.0,Cloudy
+2025,2025-12-06,Saturday,16:00,61,0.0,Clear
+2025,2025-12-06,Saturday,17:00,61,0.0,Clear
+2025,2025-12-06,Saturday,18:00,59,0.0,Clear
+2025,2025-12-06,Saturday,19:00,57,0.0,Clear
+2025,2025-12-06,Saturday,20:00,55,0.0,Clear
+2025,2025-12-06,Saturday,21:00,55,0.0,Clear
+2025,2025-12-07,Sunday,12:00,58,0.0,Clear
+2025,2025-12-07,Sunday,13:00,55,0.12,Rain
+2025,2025-12-07,Sunday,14:00,56,0.12,Rain
+2025,2025-12-07,Sunday,15:00,59,0.0,Partly cloudy
+2025,2025-12-07,Sunday,16:00,61,0.0,Clear
+2025,2025-12-07,Sunday,17:00,61,0.0,Cloudy
+2025,2025-12-07,Sunday,18:00,58,0.0,Cloudy
+2025,2025-12-07,Sunday,19:00,57,0.0,Clear
+2025,2025-12-07,Sunday,20:00,56,0.0,Clear
+2025,2025-12-07,Sunday,21:00,56,0.0,Clear
+</script>
+<script type="text/csv" id="csv-equipment_downtime">
+festival_year,date,day,gate_id,start_time,end_time,scanners_affected,cause
+2024,2024-12-06,Friday,C,17:40,17:55,1,Scanner battery died
+2024,2024-12-07,Saturday,B,17:00,18:15,5,Network outage; scanners could not reach ticket system
+2024,2024-12-08,Sunday,E,15:10,15:25,1,Scanner restart
+2025,2025-12-05,Friday,A,16:20,16:30,1,Scanner restart
+2025,2025-12-06,Saturday,D,14:00,14:20,1,"Cracked scanner screen, swapped"
+2025,2025-12-07,Sunday,B,19:05,19:15,1,Scanner battery died
+</script>
+<script>
+'use strict';
+// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 data \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const FILES = {
+  gate_details:'data/gate_details.csv', gate_activity:'data/gate_activity.csv',
+  performance_schedule:'data/performance_schedule.csv', weather:'data/weather.csv', equipment_downtime:'data/equipment_downtime.csv'
+};
+const REQUIRED = {
+  gate_activity:['date','interval_start','gate_id','arrivals','queue_length_end','avg_wait_min','lanes_open','staff_assigned'],
+  gate_details:['gate_id','gate_name','max_lanes','standard_staff','avg_scans_per_lane_per_min','staff_per_lane'],
+  performance_schedule:['date','stage','artist','start_time','end_time','expected_draw'],
+  weather:['date','hour','temperature_f','precipitation_in','conditions'],
+  equipment_downtime:['date','gate_id','start_time','end_time','scanners_affected','cause']
+};
+const NICE = {gate_details:'Gate details',gate_activity:'Gate activity',performance_schedule:'Performance schedule',weather:'Weather',equipment_downtime:'Equipment downtime'};
+const BUILTIN = {}, DATA = {}, SOURCE = {};
+
+function parseCSV(text){
+  const rows=[]; let row=[], f='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(f); f=''; }
+    else if(c==='\n'){ row.push(f); rows.push(row); row=[]; f=''; }
+    else if(c!=='\r') f+=c;
+  }
+  if(f.length||row.length){ row.push(f); rows.push(row); }
+  const header=(rows.shift()||[]).map(h=>h.trim().replace(/^\ufeff/,'').toLowerCase());
+  return {header, rows: rows.filter(r=>r.some(v=>v.trim()!=='')).map(r=>{const o={}; header.forEach((h,i)=>o[h]=(r[i]??'').trim()); return o;})};
+}
+function validate(kind, parsed){
+  const missing = REQUIRED[kind].filter(c=>!parsed.header.includes(c));
+  if(missing.length) throw new Error('missing columns: '+missing.join(', '));
+  if(!parsed.rows.length) throw new Error('no rows');
+  return parsed.rows;
+}
+const tm = s => { const m=/^(\d{1,2}):(\d{2})/.exec(String(s).trim()); return m ? (+m[1])*60+(+m[2]) : NaN; };
+const pad = n => String(n).padStart(2,'0');
+const fmtClock = m => { m=Math.floor(m); const h=Math.floor(m/60), mm=m%60; const h12=((h+11)%12)+1; return `${h12}:${pad(mm)} ${h<12?'AM':'PM'}`; };
+const fmtShort = m => { const h=Math.floor(m/60), mm=m%60; const h12=((h+11)%12)+1; return mm?`${h12}:${pad(mm)}`:`${h12}${h<12?'am':'pm'}`; };
+const fmt1 = x => x>=100? Math.round(x).toString() : (Math.round(x*10)/10).toFixed(1);
+
+// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 model \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const W=1000, H=640;
+const PRESET = {
+  A:{x:430,y:82,nx:0,ny:-1,src:{x:430,y:26,w:120,h:30}},
+  B:{x:182,y:235,nx:-1,ny:0,src:{x:52,y:235,w:72,h:34}},
+  C:{x:818,y:300,nx:1,ny:0,src:{x:945,y:300,w:88,h:34}},
+  D:{x:570,y:558,nx:0,ny:1,src:{x:570,y:614,w:120,h:30}},
+  E:{x:182,y:445,nx:-1,ny:0,src:{x:52,y:445,w:72,h:34}}
+};
+const STAGES = {'Main Stage':{x:610,y:330,w:92,h:30},'Grove Stage':{x:400,y:205,w:84,h:28},'Peach Stage':{x:430,y:462,w:84,h:28}};
+const PARK = {x:182,y:82,w:636,h:476,r:26};
+const GCOL = ['--g1','--g2','--g3','--g4','--g5','--g6','--g7','--g8'];
+const M = {gates:[], days:[], stages:[]};
+
+function buildModel(){
+  const seen=new Set();
+  M.gates = DATA.gate_details.filter(r=>r.gate_id && !seen.has(r.gate_id) && seen.add(r.gate_id)).map((r,i)=>({
+    id:r.gate_id, name:r.gate_name||('Gate '+r.gate_id), location:r.location||'', transport:r.nearest_transportation||'',
+    maxLanes:+r.max_lanes||8, stdStaff:+r.standard_staff||12, rate:+r.avg_scans_per_lane_per_min||2.7, spl:+r.staff_per_lane||2,
+    color:GCOL[i%GCOL.length], idx:i
+  }));
+  // layout
+  let extra=0;
+  for(const g of M.gates){
+    const p=PRESET[g.id.toUpperCase()];
+    if(p){ Object.assign(g,{x:p.x,y:p.y,nx:p.nx,ny:p.ny,src:{...p.src}}); }
+    else { // place along the perimeter
+      const a=(extra++*2.4)+0.6, cx=PARK.x+PARK.w/2, cy=PARK.y+PARK.h/2;
+      const dx=Math.cos(a), dy=Math.sin(a); const k=Math.min(Math.abs(PARK.w/2/dx)||1e9, Math.abs(PARK.h/2/dy)||1e9);
+      const ex=cx+dx*k, ey=cy+dy*k; const horiz=Math.abs(dy*k)>=PARK.h/2-0.5;
+      g.x=ex; g.y=ey; g.nx=horiz?0:Math.sign(dx); g.ny=horiz?Math.sign(dy):0;
+      g.src={x:ex+g.nx*95,y:ey+g.ny*52,w:96,h:30};
+    }
+    g.tx=-g.ny; g.ty=g.nx;
+  }
+  // days
+  const byDate={};
+  for(const r of DATA.gate_activity){
+    const d=r.date; if(!d) continue;
+    const o=(byDate[d] ||= {day:r.day||'', year:r.festival_year||d.slice(0,4), rows:{}, iv:new Set()});
+    const t=tm(r.interval_start); if(isNaN(t)) continue;
+    o.rows[r.gate_id+'|'+t]=r; o.iv.add(t);
+  }
+  M.days = Object.keys(byDate).sort().map(d=>{ const iv=[...byDate[d].iv].sort((a,b)=>a-b); return {date:d, day:byDate[d].day, year:byDate[d].year, rows:byDate[d].rows, open:iv[0], close:iv[iv.length-1]+15}; });
+  // stages
+  const names=[...new Set(DATA.performance_schedule.map(r=>r.stage).filter(Boolean))];
+  M.stages = names.map((n,i)=>{ const p=STAGES[n]; return p?{name:n,...p}:{name:n,x:520+((i*97)%160)-80,y:270+((i*61)%140)-70,w:84,h:28}; });
+}
+const rowFor=(day,gid,min)=>day.rows[gid+'|'+(Math.floor(min/15)*15)];
+function actualTotal(day,min){ let q=0,w=0,n=0; for(const g of M.gates){ const r=rowFor(day,g.id,min); if(r){ q+=+r.queue_length_end||0; w+=+r.avg_wait_min||0; n++; } } return {q, w:n?w/n:NaN}; }
+function actualAvgWait(day){ let s=0,n=0; for(const k in day.rows){ const r=day.rows[k]; const a=+r.arrivals||0; if(a>0){ s+=a*(+r.avg_wait_min||0); n+=a; } } return n?s/n:NaN; }
+
+// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 simulation \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const S = {dayIdx:0, t:0, playing:false, speed:4, mode:'hist', staff:{}, closed:{}, demand:1, ppd:5, laneTime:1.5, pool:60, g:{}, dots:[], away:0, hist:[], dotsOn:true};
+function resetSim(){
+  const day=M.days[S.dayIdx]; S.t=day?day.open:0; S.away=0; S.hist=[]; S.dots=[]; S.g={};
+  for(const g of M.gates) S.g[g.id]={q:0,cohorts:[],served:0,waitW:0,wait:0,svc:0,lanes:0,staff:0,own:0,redir:0,down:null,dotAcc:0,serveAcc:0,queue:[],redirAcc:{},bars:{falling:[],leaving:[],aAcc:0,sAcc:0}};
+}
+function nearestOpen(g, n){
+  return M.gates.filter(o=>o!==g && !S.closed[o.id]).map(o=>({o,d:Math.hypot(o.x-g.x,o.y-g.y)})).sort((a,b)=>a.d-b.d).slice(0,n).map(x=>x.o);
+}
+function activeDowntime(g, t){
+  const day=M.days[S.dayIdx]; if(!day) return null;
+  for(const r of DATA.equipment_downtime){ if(r.date===day.date && r.gate_id===g.id){ const a=tm(r.start_time), b=tm(r.end_time); if(t>=a && t<b) return r; } }
+  return null;
+}
+function step(dt){
+  const day=M.days[S.dayIdx]; if(!day) return;
+  const t=S.t;
+  const open=M.gates.filter(g=>!S.closed[g.id]);
+  const inflow={}; for(const g of M.gates) inflow[g.id]={own:0,from:[]};
+  for(const g of M.gates){
+    const r=rowFor(day,g.id,t); const base=r? (+r.arrivals||0)/15*S.demand : 0;
+    if(!S.closed[g.id]){ inflow[g.id].own=base; continue; }
+    const tg=nearestOpen(g,2);
+    if(!tg.length){ S.away+=base*dt; continue; }
+    const w = tg.length===1?[1]:[0.6,0.4];
+    tg.forEach((o,i)=>inflow[o.id].from.push({g, rate:base*w[i]}));
+  }
+  for(const g of M.gates){
+    const G=S.g[g.id], r=rowFor(day,g.id,t), f=inflow[g.id];
+    if(S.closed[g.id]){ G.own=0;G.redir=0;G.svc=0;G.lanes=0;G.staff=0;G.wait=0;G.down=null; continue; }
+    let staff, lanes;
+    if(S.mode==='hist' && r){ staff=+r.staff_assigned||0; lanes=+r.lanes_open||0; }
+    else { staff=S.staff[g.id] ?? g.stdStaff; lanes=Math.floor(staff/g.spl); }
+    lanes=Math.min(g.maxLanes, lanes);
+    const dn=activeDowntime(g,t); if(dn) lanes=Math.max(0, lanes-(+dn.scanners_affected||0));
+    const svc=lanes*g.rate;
+    const redir=f.from.reduce((s,x)=>s+x.rate,0), inRate=f.own+redir;
+    if(inRate>0 && dt>0){ G.cohorts.push({t, n:inRate*dt}); G.q+=inRate*dt; }
+    let cap=svc*dt, served=0;
+    while(cap>1e-9 && G.cohorts.length){ const c=G.cohorts[0]; const take=Math.min(c.n,cap); c.n-=take; cap-=take; served+=take; G.waitW+=take*(t-c.t); if(c.n<=1e-9) G.cohorts.shift(); }
+    G.q=Math.max(0,G.q-served); G.served+=served;
+    if(S.dotsOn){ G.bars.aAcc+=inRate*dt; G.bars.sAcc+=served; }
+    Object.assign(G,{own:f.own, redir, svc, lanes, staff, down:dn, wait: svc>0? G.q/svc : (G.q>0.5?Infinity:0)});
+    if(S.dotsOn){
+      G.dotAcc+=f.own*dt/S.ppd; while(G.dotAcc>=1){ spawnDot(g,g); G.dotAcc--; }
+      for(const x of f.from){ G.redirAcc[x.g.id]=(G.redirAcc[x.g.id]||0)+x.rate*dt/S.ppd; while(G.redirAcc[x.g.id]>=1){ spawnDot(x.g,g); G.redirAcc[x.g.id]--; } }
+      G.serveAcc+=served/S.ppd; while(G.serveAcc>=1 && G.queue.length){ release(g, G.queue.shift()); G.serveAcc--; }
+      if(G.serveAcc>=1) G.serveAcc=Math.min(G.serveAcc, 3);
+    }
+  }
+  S.t+=dt;
+  const m=Math.floor(S.t)-Math.floor(t);
+  if(m>0){ let q=0; for(const g of M.gates) q+=S.g[g.id].q; S.hist.push({t:Math.floor(S.t), q}); }
+}
+function jumpTo(target){
+  const day=M.days[S.dayIdx]; if(!day) return;
+  target=Math.max(day.open, Math.min(day.close, target));
+  resetSim(); S.dotsOn=false;
+  while(S.t<target-1e-9) step(Math.min(0.25, target-S.t));
+  S.dotsOn=true; S.t=target;
+}
+
+// dots
+function slotPos(g,k){
+  const row=Math.floor(k/8); let col=k%8; if(row%2) col=7-col;
+  return {x:g.x+g.nx*(16+row*7.5)+g.tx*((col-3.5)*7.5), y:g.y+g.ny*(16+row*7.5)+g.ty*((col-3.5)*7.5)};
+}
+// ring road: the road centrelines drawn around the park, measured clockwise from the top-left corner
+const RING={x0:111,y0:57,x1:949,y1:613};
+const RING_L=[RING.x1-RING.x0, RING.y1-RING.y0, RING.x1-RING.x0, RING.y1-RING.y0];
+const RING_P=RING_L[0]*2+RING_L[1]*2;
+const RING_CORNERS=[0, RING_L[0], RING_L[0]+RING_L[1], RING_L[0]*2+RING_L[1]];
+const RING_N=[[0,1],[-1,0],[0,-1],[1,0]]; // inward normal of each side
+const ringNorm=s=>((s%RING_P)+RING_P)%RING_P;
+function ringPoint(s,o=0){ // position at distance s along the ring, shifted o units toward the park
+  s=ringNorm(s);
+  const C=[[RING.x0,RING.y0],[RING.x1,RING.y0],[RING.x1,RING.y1],[RING.x0,RING.y1]];
+  for(let i=0;i<4;i++){ if(s<=RING_L[i]+1e-9){ const [ax,ay]=C[i],[bx,by]=C[(i+1)%4], f=s/RING_L[i]; return {x:ax+(bx-ax)*f+RING_N[i][0]*o, y:ay+(by-ay)*f+RING_N[i][1]*o}; } s-=RING_L[i]; }
+  return {x:RING.x0,y:RING.y0};
+}
+function ringParam(x,y){ // nearest point on the ring, as a distance along it
+  const cx=Math.max(RING.x0,Math.min(RING.x1,x)), cy=Math.max(RING.y0,Math.min(RING.y1,y));
+  const dl=Math.abs(x-RING.x0), dr=Math.abs(x-RING.x1), dt=Math.abs(y-RING.y0), db=Math.abs(y-RING.y1), m=Math.min(dl,dr,dt,db);
+  if(m===dt) return cx-RING.x0;
+  if(m===dr) return RING_L[0]+(cy-RING.y0);
+  if(m===db) return RING_L[0]+RING_L[1]+(RING.x1-cx);
+  return RING_L[0]*2+RING_L[1]+(RING.y1-cy);
+}
+// where cars come onto the map: the road ends at the edges, each joining the ring at a corner
+const ENTRIES=[
+  {x:RING.x0,y:-12,s:RING_CORNERS[0]},{x:-12,y:RING.y0,s:RING_CORNERS[0]},{x:RING.x1,y:-12,s:RING_CORNERS[1]},{x:W+12,y:RING.y0,s:RING_CORNERS[1]},
+  {x:W+12,y:RING.y1,s:RING_CORNERS[2]},{x:RING.x1,y:H+12,s:RING_CORNERS[2]},{x:-12,y:RING.y1,s:RING_CORNERS[3]},{x:RING.x0,y:H+12,s:RING_CORNERS[3]}
+];
+function drivePath(from){
+  const e=ENTRIES[Math.floor(Math.random()*ENTRIES.length)];
+  const sg=ringParam(from.src.x,from.src.y);
+  const fwd=ringNorm(sg-e.s), back=RING_P-fwd;
+  const dir=(fwd<=back?1:-1)*(Math.random()<0.85?1:-1); // mostly the short way round
+  const len=dir===1?fwd:back, lane=dir===1?6:-6;       // drive on the right: clockwise is the inner lane
+  const pts=[{x:e.x,y:e.y}];
+  let s=e.s, travelled=0;
+  for(let i=0;i<8;i++){
+    let next;
+    if(dir===1){ next=RING_CORNERS.find(c=>c>s+1e-6); if(next===undefined) next=RING_P; }
+    else { next=[...RING_CORNERS].reverse().find(c=>c<s-1e-6); if(next===undefined) next=RING_CORNERS[3]-RING_P; }
+    const d=Math.abs(next-s); if(travelled+d>=len) break;
+    travelled+=d; s=ringNorm(next); pts.push(ringPoint(s,lane));
+  }
+  pts.push(ringPoint(sg,lane));
+  pts.push({x:from.src.x+(Math.random()-0.5)*from.src.w*0.6, y:from.src.y+(Math.random()-0.5)*from.src.h*0.6});
+  return pts;
+}
+function spawnDot(from,to){
+  const path=drivePath(from), p0=path[0];
+  S.dots.push({c:from.color, x:p0.x, y:p0.y, phase:'drive', g:to, path, wi:1, h:0, v:260+Math.random()*80, a:1});
+}
+function release(g,d){
+  const st=M.stages.length? M.stages[Math.floor(Math.random()*M.stages.length)] : {x:PARK.x+PARK.w/2,y:PARK.y+PARK.h/2,w:80,h:30};
+  d.phase='inside'; d.tx=st.x+(Math.random()-0.5)*st.w*1.6; d.ty=st.y+(Math.random()-0.5)*(st.h*2+40); d.v=70+Math.random()*30; d.linger=1.5+Math.random()*2;
+  d.x=g.x-g.nx*4; d.y=g.y-g.ny*4;
+}
+function moveDots(dt){
+  if(dt<=0) return;
+  const keep=[];
+  for(const d of S.dots){
+    if(d.phase==='drive'){
+      let s=d.v*dt;
+      while(s>0 && d.wi<d.path.length){ const p=d.path[d.wi]; const dx=p.x-d.x, dy=p.y-d.y, dist=Math.hypot(dx,dy);
+        if(dist<=s){ d.x=p.x; d.y=p.y; s-=dist; d.wi++; } else { d.h=Math.atan2(dy,dx); d.x+=dx/dist*s; d.y+=dy/dist*s; s=0; } }
+      if(d.wi>=d.path.length){ d.phase='approach'; d.v=48+Math.random()*16; }
+      keep.push(d);
+    } else if(d.phase==='approach'){
+      const G=S.g[d.g.id]; if(S.closed[d.g.id]){ continue; }
+      const p=slotPos(d.g, G.queue.length); const dx=p.x-d.x, dy=p.y-d.y, dist=Math.hypot(dx,dy), s=d.v*dt;
+      if(dist<=s){ d.x=p.x; d.y=p.y; d.phase='queue'; G.queue.push(d); } else { d.x+=dx/dist*s; d.y+=dy/dist*s; }
+      keep.push(d);
+    } else if(d.phase==='queue'){
+      const G=S.g[d.g.id]; const k=G.queue.indexOf(d); if(k<0){ continue; }
+      const p=slotPos(d.g,k); const dx=p.x-d.x, dy=p.y-d.y, dist=Math.hypot(dx,dy), s=Math.max(40,dist*2)*dt;
+      if(dist<=s){ d.x=p.x; d.y=p.y; } else { d.x+=dx/dist*s; d.y+=dy/dist*s; }
+      keep.push(d);
+    } else {
+      const dx=d.tx-d.x, dy=d.ty-d.y, dist=Math.hypot(dx,dy), s=d.v*dt;
+      if(dist<=s){ d.x=d.tx; d.y=d.ty; d.linger-=dt; d.a=Math.max(0,Math.min(1,d.linger/1.5)); if(d.linger<=0) continue; }
+      else { d.x+=dx/dist*s; d.y+=dy/dist*s; }
+      keep.push(d);
+    }
+  }
+  S.dots=keep;
+  if(S.dots.length>4000) S.dots.splice(0, S.dots.length-4000);
+}
+
+// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 rendering \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const cv=document.getElementById('map'), ctx=cv.getContext('2d');
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let T={};
+function readTheme(){ T={}; for(const n of ['--grass','--grass-2','--path','--road','--road-ink','--lot','--stage','--ink','--ink-2','--muted','--line','--line-2','--panel','--accent','--good','--warn','--serious','--critical','--closed','--g1','--g2','--g3','--g4','--g5','--g6','--g7','--g8']) T[n]=css(n); }
+function sev(wait){ return wait<5?'--good':wait<10?'--warn':wait<20?'--serious':'--critical'; }
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+function resizeCanvas(){
+  const w=cv.clientWidth||600, dpr=Math.min(2,window.devicePixelRatio||1);
+  if(cv.width!==Math.round(w*dpr)){ cv.width=Math.round(w*dpr); cv.height=Math.round(w*H/W*dpr); }
+}
+function drawMap(){
+  resizeCanvas();
+  const sc=cv.width/W; ctx.setTransform(sc,0,0,sc,0,0); ctx.clearRect(0,0,W,H);
+  ctx.font='500 12px Barlow, system-ui, sans-serif'; ctx.textBaseline='middle';
+  const day=M.days[S.dayIdx];
+  // roads
+  ctx.fillStyle=T['--road']; ctx.fillRect(96,0,30,H); ctx.fillRect(0,46,W,22); ctx.fillRect(W-62,0,22,H); ctx.fillRect(0,H-38,W,22);
+  ctx.strokeStyle=T['--road-ink']; ctx.setLineDash([10,10]); ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(111,0); ctx.lineTo(111,H); ctx.moveTo(0,57); ctx.lineTo(W,57); ctx.moveTo(W-51,0); ctx.lineTo(W-51,H); ctx.moveTo(0,H-27); ctx.lineTo(W,H-27); ctx.stroke(); ctx.setLineDash([]);
+  ctx.save(); ctx.translate(111,560); ctx.rotate(-Math.PI/2); ctx.fillStyle=T['--muted']; ctx.font='600 11px "Barlow Condensed", system-ui, sans-serif'; ctx.textAlign='center'; ctx.fillText('PIEDMONT AVE', 0, 0); ctx.restore();
+  // park
+  ctx.fillStyle=T['--grass']; rr(PARK.x,PARK.y,PARK.w,PARK.h,PARK.r); ctx.fill();
+  ctx.strokeStyle=T['--grass-2']; ctx.lineWidth=3; ctx.stroke();
+  // paths gate\u2192stages
+  ctx.strokeStyle=T['--path']; ctx.lineWidth=7; ctx.lineCap='round';
+  for(const g of M.gates) for(const s of M.stages){ ctx.beginPath(); ctx.moveTo(g.x-g.nx*8,g.y-g.ny*8); ctx.lineTo(s.x,s.y); ctx.stroke(); }
+  // compass
+  ctx.fillStyle=T['--muted']; ctx.font='600 11px "Barlow Condensed", system-ui, sans-serif'; ctx.textAlign='center'; ctx.fillText('N', 860, 90); ctx.beginPath(); ctx.moveTo(860,98); ctx.lineTo(860,122); ctx.strokeStyle=T['--muted']; ctx.lineWidth=1.5; ctx.stroke(); ctx.beginPath(); ctx.moveTo(855,104); ctx.lineTo(860,97); ctx.lineTo(865,104); ctx.stroke();
+  // stages
+  const live=day? DATA.performance_schedule.filter(r=>r.date===day.date && S.t>=tm(r.start_time) && S.t<tm(r.end_time)) : [];
+  const soon=day? DATA.performance_schedule.filter(r=>r.date===day.date && S.t<tm(r.start_time) && S.t>=tm(r.start_time)-30) : [];
+  for(const s of M.stages){
+    const lv=live.find(r=>r.stage===s.name), sn=soon.find(r=>r.stage===s.name);
+    if(lv){ const n={Low:1,Medium:2,High:3,Headliner:4}[lv.expected_draw]||2; const ph=(performance.now()/900)%1;
+      for(let i=0;i<n;i++){ const rad=s.w*0.55+i*10+ph*8; ctx.beginPath(); ctx.ellipse(s.x,s.y,rad,rad*0.6,0,0,Math.PI*2); ctx.strokeStyle=T['--accent']; ctx.globalAlpha=0.28-(i*0.05); ctx.lineWidth=2; ctx.stroke(); } ctx.globalAlpha=1; }
+    ctx.fillStyle=T['--stage']; rr(s.x-s.w/2,s.y-s.h/2,s.w,s.h,5); ctx.fill(); ctx.strokeStyle=lv?T['--accent']:T['--line-2']; ctx.lineWidth=lv?2:1; ctx.stroke();
+    ctx.fillStyle=T['--ink']; ctx.font='600 12px "Barlow Condensed", system-ui, sans-serif'; ctx.textAlign='center'; ctx.fillText(s.name.toUpperCase(), s.x, s.y);
+    ctx.font='500 11px Barlow, system-ui, sans-serif'; ctx.fillStyle=T['--ink-2'];
+    if(lv) ctx.fillText(`\u25b6 ${lv.artist} \u00b7 ${lv.expected_draw}`, s.x, s.y+s.h/2+10);
+    else if(sn) ctx.fillText(`${sn.artist} at ${fmtShort(tm(sn.start_time))} \u00b7 ${sn.expected_draw}`, s.x, s.y+s.h/2+10);
+  }
+  // sources
+  for(const g of M.gates){
+    const s=g.src; ctx.fillStyle=T['--lot']; rr(s.x-s.w/2,s.y-s.h/2,s.w,s.h,5); ctx.fill(); ctx.strokeStyle=T['--line-2']; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle=T['--ink-2']; ctx.font='500 11px Barlow, system-ui, sans-serif'; ctx.textAlign='center';
+    const lab=(g.transport||'Arrivals').split(/[\/(]/)[0].trim().slice(0,20); ctx.fillText(lab, s.x, s.y);
+  }
+  // redirect arrows for closed gates
+  for(const g of M.gates){ if(!S.closed[g.id]) continue; const tg=nearestOpen(g,2);
+    ctx.strokeStyle=T['--closed']; ctx.setLineDash([6,6]); ctx.lineWidth=1.5;
+    for(const o of tg){ const p=slotPos(o, S.g[o.id]?.queue.length||0); ctx.beginPath(); ctx.moveTo(g.src.x,g.src.y); ctx.quadraticCurveTo((g.src.x+p.x)/2+(g.ty*60), (g.src.y+p.y)/2+(g.tx*60), p.x,p.y); ctx.stroke(); }
+    ctx.setLineDash([]);
+  }
+  // dots
+  for(const d of S.dots){
+    if(d.phase==='drive'){ ctx.save(); ctx.translate(d.x,d.y); ctx.rotate(d.h); ctx.fillStyle=T[d.c]; rr(-5.5,-2.8,11,5.6,1.6); ctx.fill(); ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.fillRect(0.8,-1.8,2.4,3.6); ctx.restore(); continue; }
+    ctx.globalAlpha=d.phase==='inside'?d.a*0.75:1; ctx.fillStyle=T[d.c]; ctx.beginPath(); ctx.arc(d.x,d.y,2.8,0,Math.PI*2); ctx.fill(); }
+  ctx.globalAlpha=1;
+  // gates
+  for(const g of M.gates){
+    const G=S.g[g.id]||{}; const closed=!!S.closed[g.id]; const col=closed?T['--closed']:T[g.color];
+    const len=46, th=10; ctx.save(); ctx.translate(g.x,g.y); ctx.rotate(Math.atan2(g.ny,g.nx));
+    ctx.fillStyle=T['--panel']; rr(-th/2,-len/2,th,len,3); ctx.fill(); ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+    const ml=g.maxLanes, sp=(len-6)/ml;
+    for(let i=0;i<ml;i++){ const y=-len/2+3+i*sp; const on=i<(G.lanes||0); const dn=!closed && G.down && i>=(G.lanes||0) && i<(G.lanes||0)+(+G.down.scanners_affected||0);
+      ctx.fillStyle=on?col:dn?T['--critical']:T['--line']; ctx.fillRect(-th/2+2,y,th-4,Math.max(1.5,sp-1.5)); }
+    if(closed){ ctx.strokeStyle=T['--critical']; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(8,8); ctx.moveTo(8,-8); ctx.lineTo(-8,8); ctx.stroke(); }
+    ctx.restore();
+    // label inside the park
+    const lx=g.x-g.nx*46, ly=g.y-g.ny*34; ctx.textAlign='center';
+    ctx.fillStyle=col; ctx.font='700 15px "Barlow Condensed", system-ui, sans-serif'; ctx.fillText(`${g.id} \u00b7 ${g.name.toUpperCase()}`, lx, ly);
+    if(closed){ ctx.fillStyle=T['--ink-2']; ctx.font='600 11px Barlow, system-ui, sans-serif'; ctx.fillText('CLOSED \u00b7 arrivals redirected', lx, ly+14); }
+    else {
+      const w=G.wait===Infinity?Infinity:(G.wait||0)+S.laneTime; const txt=w===Infinity?'no lanes open':`${Math.round(G.q||0)} in line \u00b7 ${fmt1(w)} min`;
+      ctx.font='600 12px Barlow, system-ui, sans-serif'; const tw=ctx.measureText(txt).width+14;
+      ctx.fillStyle=T[sev(w)]; rr(lx-tw/2, ly+6, tw, 17, 9); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillText(txt, lx, ly+14.5);
+      if(G.down){ ctx.fillStyle=T['--critical']; ctx.font='600 11px Barlow, system-ui, sans-serif'; ctx.fillText(`\u26a0 ${G.down.scanners_affected} scanner${G.down.scanners_affected==1?'':'s'} down`, lx, ly+32); }
+    }
+  }
+  // rain
+  const wx=weatherNow(); if(wx && /rain/i.test(wx.conditions)){ ctx.strokeStyle=T['--g1']; ctx.globalAlpha=0.25; ctx.lineWidth=1; const off=(performance.now()/12)%40;
+    for(let i=0;i<90;i++){ const x=(i*137+off*3)%W, y=((i*89)+off*9)%H; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-4,y+12); ctx.stroke(); } ctx.globalAlpha=1; }
+}
+function weatherNow(){ const day=M.days[S.dayIdx]; if(!day) return null; const h=Math.floor(S.t/60)*60; return DATA.weather.find(r=>r.date===day.date && tm(r.hour)===h) || null; }
+
+// live bar graph: one circle per person in line, one square per staff member
+const bc=document.getElementById('bars'), bctx=bc.getContext('2d');
+let barScaleQ=50;
+function niceStep(x){ const p=Math.pow(10,Math.floor(Math.log10(x||1))); const m=x/p; return (m<=1?1:m<=2?2:m<=5?5:10)*p; }
+function moveBars(dtReal){ // arrivals drop in from the top, served people fall out through the booth; timed in real seconds
+  for(const g of M.gates){ const G=S.g[g.id]; if(!G||!G.bars) continue; const B=G.bars;
+    if(S.closed[g.id]){ B.falling.length=0; B.aAcc=0; B.sAcc=0; }
+    let n=Math.floor(B.aAcc); if(n>0){ B.aAcc-=n; for(let i=0;i<Math.min(n,10);i++) B.falling.push({p:0,x:Math.random(),v:2.4+Math.random()*0.9}); }
+    n=Math.floor(B.sAcc); if(n>0){ B.sAcc-=n; for(let i=0;i<Math.min(n,10);i++) B.leaving.push({p:0,x:Math.random()}); }
+    for(const f of B.falling) f.p+=f.v*dtReal; B.falling=B.falling.filter(f=>f.p<1);
+    for(const l of B.leaving) l.p+=2.2*dtReal; B.leaving=B.leaving.filter(l=>l.p<1);
+  }
+}
+function drawBars(){
+  const w=bc.clientWidth||600, dpr=Math.min(2,window.devicePixelRatio||1);
+  if(bc.width!==Math.round(w*dpr)){ bc.width=Math.round(w*dpr); bc.height=Math.round(w*H/W*dpr); }
+  const sc=bc.width/W, c=bctx; c.setTransform(sc,0,0,sc,0,0); c.clearRect(0,0,W,H);
+  const n=M.gates.length||1, left=64, right=W-16, base=520, top=50, laneW=(right-left)/n;
+  let maxQ=0; for(const g of M.gates){ const G=S.g[g.id]; if(G && !S.closed[g.id]) maxQ=Math.max(maxQ,G.q); }
+  const need=Math.max(50, Math.ceil(maxQ/50)*50); barScaleQ = need>barScaleQ ? need : Math.max(need, barScaleQ-1);
+  const inner=laneW-28; let s=9, cols, rows;
+  for(;;){ cols=Math.max(1,Math.floor(inner/s)); rows=Math.ceil(barScaleQ/cols); if(rows*s<=base-top || s<=2) break; s-=0.5; }
+  const yOf=q=>base-(q/cols)*s, r=Math.max(0.8,s*0.42);
+  // axis and grid, in people
+  const stepN=niceStep(barScaleQ/4);
+  c.font='500 11px Barlow, system-ui, sans-serif'; c.textAlign='right'; c.textBaseline='middle';
+  for(let q=0;q<=barScaleQ+1e-9;q+=stepN){ const y=yOf(q); c.strokeStyle=T['--line']; c.lineWidth=1; c.beginPath(); c.moveTo(left,y); c.lineTo(right,y); c.stroke(); c.fillStyle=T['--muted']; c.fillText(Math.round(q), left-8, y); }
+  c.save(); c.translate(16,(top+base)/2); c.rotate(-Math.PI/2); c.textAlign='center'; c.fillStyle=T['--muted']; c.font='600 11px "Barlow Condensed", system-ui, sans-serif'; c.fillText('PEOPLE IN LINE', 0, 0); c.restore();
+  c.strokeStyle=T['--line-2']; c.lineWidth=1.5; c.beginPath(); c.moveTo(left,base); c.lineTo(right,base); c.stroke();
+  M.gates.forEach((g,i)=>{
+    const G=S.g[g.id]; if(!G||!G.bars) return; const B=G.bars, closed=!!S.closed[g.id], col=closed?T['--closed']:T[g.color];
+    const x0=left+i*laneW+14, bw=cols*s, cx=x0+bw/2;
+    const total=Math.round(G.q), stack=Math.max(0,total-B.falling.length);
+    const slot=k=>({x:x0+(k%cols)*s+s/2, y:base-Math.floor(k/cols)*s-s/2});
+    // the stack
+    c.fillStyle=col; c.beginPath(); for(let k=0;k<stack;k++){ const p=slot(k); c.moveTo(p.x+r,p.y); c.arc(p.x,p.y,r,0,Math.PI*2); } c.fill();
+    // arrivals dropping onto the next free slots
+    B.falling.forEach((f,j)=>{ const t=slot(stack+j), e=1-Math.pow(1-Math.min(1,f.p),2), sx=x0+f.x*bw; c.globalAlpha=0.9; c.beginPath(); c.arc(sx+(t.x-sx)*e, 20+(t.y-20)*e, r, 0, Math.PI*2); c.fill(); });
+    // scanned people falling out through the booth
+    for(const l of B.leaving){ c.globalAlpha=1-l.p; c.beginPath(); c.arc(x0+l.x*bw, base+8+l.p*64, r, 0, Math.PI*2); c.fill(); }
+    c.globalAlpha=1;
+    // what the gate can scan in the next 15 minutes
+    if(!closed && G.svc>0){ const y=yOf(G.svc*15); c.strokeStyle=col; c.lineWidth=1.5; c.setLineDash([4,3]); c.beginPath(); c.moveTo(x0-6,y); c.lineTo(x0+bw+6,y); c.stroke(); c.setLineDash([]); }
+    // count and wait above the stack
+    const wv=G.wait===Infinity?Infinity:G.wait+S.laneTime;
+    const topY=Math.max(top-14, Math.min(yOf(total), closed?base:yOf(G.svc*15))-10);
+    c.textAlign='center'; c.textBaseline='alphabetic';
+    if(closed){ c.fillStyle=T['--ink-2']; c.font='600 12px Barlow, system-ui, sans-serif'; c.fillText('CLOSED', cx, base-10); }
+    else { c.fillStyle=T['--ink']; c.font='700 24px "Barlow Condensed", system-ui, sans-serif'; c.fillText(total, cx, topY-14);
+      const txt=wv===Infinity?'no lanes':`${fmt1(wv)} min`; c.font='600 11px Barlow, system-ui, sans-serif'; const tw=c.measureText(txt).width+12;
+      c.fillStyle=T[sev(wv)]; rr(cx-tw/2, topY-10, tw, 15, 7.5); c.fill(); c.fillStyle='#fff'; c.textBaseline='middle'; c.fillText(txt, cx, topY-2.5); c.textBaseline='alphabetic'; }
+    // the booth: one column of squares per lane, one square per staff member
+    const spl=Math.max(1,g.spl), sq=Math.max(4, Math.min(11, Math.floor(bw/Math.max(1,g.maxLanes))-3)), gap=3, boothW=g.maxLanes*(sq+gap)-gap, bx=cx-boothW/2, by=base+12;
+    const dn=G.down?(+G.down.scanners_affected||0):0;
+    for(let l=0;l<g.maxLanes;l++){ const open=!closed && l<G.lanes, down=!closed && l>=G.lanes && l<G.lanes+dn;
+      for(let j=0;j<spl;j++){ const x=bx+l*(sq+gap), y=by+j*(sq+gap);
+        if(open){ c.fillStyle=col; c.fillRect(x,y,sq,sq); }
+        else { c.strokeStyle=down?T['--critical']:T['--line-2']; c.lineWidth=1; c.strokeRect(x+0.5,y+0.5,sq-1,sq-1); } } }
+    const extra=closed?0:Math.max(0,G.staff-G.lanes*spl); // staff beyond what the open lanes need
+    for(let k=0;k<extra && k<g.maxLanes;k++){ c.fillStyle=col; c.globalAlpha=0.45; c.fillRect(bx+k*(sq+gap), by+spl*(sq+gap), sq, sq); } c.globalAlpha=1;
+    const ly=by+(spl+(extra>0?1:0))*(sq+gap)+16;
+    c.fillStyle=col; c.font='700 14px "Barlow Condensed", system-ui, sans-serif'; c.textAlign='center'; c.fillText(`${g.id} \u00b7 ${g.name.toUpperCase()}`, cx, ly);
+    c.fillStyle=T['--ink-2']; c.font='500 11px Barlow, system-ui, sans-serif';
+    if(closed) c.fillText('0 staff \u00b7 arrivals redirected', cx, ly+15);
+    else { c.fillText(`${G.staff} staff \u00b7 ${G.lanes}/${g.maxLanes} lanes`, cx, ly+15); c.fillText(`scans ${Math.round(G.svc*15)} per 15 min`, cx, ly+28); }
+    if(G.down && !closed){ c.fillStyle=T['--critical']; c.fillText(`\u26a0 ${dn} scanner${dn==1?'':'s'} down`, cx, ly+41); }
+  });
+}
+
+// chart
+const ch=document.getElementById('chart'), chx=ch.getContext('2d'), tip=document.getElementById('chartTip'); let chartHover=null;
+function drawChart(){
+  const day=M.days[S.dayIdx]; if(!day) return;
+  const dpr=Math.min(2,window.devicePixelRatio||1), w=ch.clientWidth||300, h=150;
+  if(ch.width!==Math.round(w*dpr)){ ch.width=Math.round(w*dpr); ch.height=Math.round(h*dpr); }
+  chx.setTransform(dpr,0,0,dpr,0,0); chx.clearRect(0,0,w,h);
+  const L=34,R=8,Tp=10,B=22, pw=w-L-R, ph=h-Tp-B;
+  const x0=day.open, x1=day.close; const X=t=>L+(t-x0)/(x1-x0)*pw;
+  const act=[]; for(let t=x0;t<x1;t+=15) act.push({t, q:actualTotal(day,t).q});
+  let ymax=10; for(const a of act) ymax=Math.max(ymax,a.q); for(const s of S.hist) ymax=Math.max(ymax,s.q); ymax=Math.ceil(ymax/100)*100||100;
+  const Y=q=>Tp+ph-(q/ymax)*ph;
+  chx.strokeStyle=T['--line']; chx.lineWidth=1; chx.font='500 10px Barlow, system-ui, sans-serif'; chx.fillStyle=T['--muted']; chx.textAlign='right'; chx.textBaseline='middle';
+  for(let i=0;i<=2;i++){ const q=ymax*i/2; chx.beginPath(); chx.moveTo(L,Y(q)); chx.lineTo(w-R,Y(q)); chx.stroke(); chx.fillText(q, L-6, Y(q)); }
+  chx.textAlign='center'; chx.textBaseline='top';
+  for(let t=Math.ceil(x0/120)*120;t<=x1;t+=120){ chx.fillText(fmtShort(t), X(t), Tp+ph+6); }
+  // actual (step, dashed)
+  chx.strokeStyle=T['--muted']; chx.setLineDash([4,4]); chx.lineWidth=2; chx.beginPath();
+  act.forEach((a,i)=>{ const x=X(a.t), y=Y(a.q); if(i===0) chx.moveTo(x,y); else chx.lineTo(x,y); chx.lineTo(X(a.t+15),y); }); chx.stroke(); chx.setLineDash([]);
+  // sim
+  if(S.hist.length){ chx.strokeStyle=T['--g1']; chx.lineWidth=2; chx.beginPath(); S.hist.forEach((s,i)=>{ const x=X(s.t), y=Y(s.q); i?chx.lineTo(x,y):chx.moveTo(x,y); }); chx.stroke();
+    const last=S.hist[S.hist.length-1]; chx.fillStyle=T['--g1']; chx.beginPath(); chx.arc(X(last.t),Y(last.q),3.5,0,Math.PI*2); chx.fill(); }
+  // now
+  chx.strokeStyle=T['--muted']; chx.lineWidth=1; chx.setLineDash([2,3]); chx.beginPath(); chx.moveTo(X(S.t),Tp); chx.lineTo(X(S.t),Tp+ph); chx.stroke(); chx.setLineDash([]);
+  if(chartHover!=null){ const t=Math.max(x0,Math.min(x1,chartHover)); chx.strokeStyle=T['--line-2']; chx.beginPath(); chx.moveTo(X(t),Tp); chx.lineTo(X(t),Tp+ph); chx.stroke();
+    const a=actualTotal(day,t).q; const s=S.hist.find(h=>h.t===Math.floor(t)); tip.style.display='block'; tip.textContent=`${fmtClock(t)} \u00b7 sim ${s?Math.round(s.q):'\u2014'} \u00b7 recorded ${a}`; }
+  else tip.style.display='none';
+  ch._X={x0,x1,L,pw};
+}
+ch.addEventListener('mousemove',e=>{ const r=ch.getBoundingClientRect(); const X=ch._X; if(!X) return; chartHover=X.x0+(e.clientX-r.left-X.L)/X.pw*(X.x1-X.x0); });
+ch.addEventListener('mouseleave',()=>{chartHover=null;});
+ch.addEventListener('click',e=>{ const X=ch._X; if(!X) return; const r=ch.getBoundingClientRect(); jumpTo(X.x0+(e.clientX-r.left-X.L)/X.pw*(X.x1-X.x0)); syncScrub(); });
+
+// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 UI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+const $=id=>document.getElementById(id);
+const cards={};
+function buildCards(){
+  const host=$('gateCards'); host.innerHTML=''; Object.keys(cards).forEach(k=>delete cards[k]);
+  for(const g of M.gates){
+    const el=document.createElement('article'); el.className='gate'; el.style.setProperty('--gc',`var(${g.color})`);
+    el.innerHTML=`
+      <div class="head"><span class="chip"></span><span class="name">${g.name}<small>Gate ${g.id}</small></span><span class="status" data-r="status">Open</span></div>
+      <div class="big"><div><div class="label">In line</div><div class="v" data-r="q">0</div></div><div><div class="label">Est. wait</div><div class="v" data-r="wait">0<em>min</em></div></div></div>
+      <table>
+        <tr><td>Arriving / 15 min</td><td data-r="arr">0</td></tr>
+        <tr><td>Capacity / 15 min</td><td data-r="cap">0</td></tr>
+        <tr><td>Lanes open</td><td data-r="lanes">0 / ${g.maxLanes}</td></tr>
+        <tr><td>Staff</td><td><span class="staff"><button class="icon sm" data-a="dec" aria-label="Remove one staff member">\u2212</button><input type="number" class="staffnum" data-r="staff" min="0" max="99" value="0" aria-label="Staff at this gate"><button class="icon sm" data-a="inc" aria-label="Add one staff member">+</button></span></td></tr>
+        <tr><td>Scanned in today</td><td data-r="served">0</td></tr>
+      </table>
+      <div class="actual"><span>Recorded this interval:</span><span class="num" data-r="actual">\u2014</span></div>
+      <div class="foot"><span class="loc" title="${g.location}">${g.location||g.transport}</span><button class="sm" data-a="toggle">Close gate</button></div>`;
+    el.querySelector('[data-a=toggle]').addEventListener('click',()=>{ S.closed[g.id]=!S.closed[g.id]; if(!S.closed[g.id]) reopenStaff(g); if(S.closed[g.id]){ const G=S.g[g.id]; if(G){ G.queue.length=0; G.cohorts.length=0; G.q=0; G.bars={falling:[],leaving:[],aAcc:0,sAcc:0}; } S.dots=S.dots.filter(d=>d.g!==g||d.phase==='inside'); } refreshStatic(); syncNow(); });
+    el.querySelector('[data-a=inc]').addEventListener('click',()=>adjustStaff(g,+1));
+    el.querySelector('[data-a=dec]').addEventListener('click',()=>adjustStaff(g,-1));
+    el.querySelector('.staffnum').addEventListener('change',e=>{ if(e.target.value==='') return; e.target.value=setStaff(g,+e.target.value); });
+    el.querySelector('.staffnum').addEventListener('blur',e=>{ e.target.value=S.closed[g.id]?0:(S.g[g.id]?S.g[g.id].staff:0); });
+    host.appendChild(el);
+    const r={}; el.querySelectorAll('[data-r]').forEach(n=>r[n.dataset.r]=n); r.el=el; r.toggle=el.querySelector('[data-a=toggle]'); r.inc=el.querySelector('[data-a=inc]'); r.dec=el.querySelector('[data-a=dec]'); cards[g.id]=r;
+  }
+  $('legend').innerHTML = M.gates.map(g=>`<span><i style="background:var(${g.color})"></i>${g.name}</span>`).join('') + `<span><i style="background:var(--closed)"></i>closed / redirected</span>`;
+}
+function seedCustom(){
+  if(S.mode!=='hist') return;
+  const day=M.days[S.dayIdx]; for(const o of M.gates){ const r=rowFor(day,o.id,S.t); S.staff[o.id]=r?(+r.staff_assigned||o.stdStaff):o.stdStaff; }
+  setMode('custom');
+}
+// staff are conserved: the 60 are split between the open gates (plus anyone left over from a closed gate).
+// Adding a person to a gate takes one from another gate; removing one sends them to another gate.
+function syncNow(){ if(M.days[S.dayIdx]){ step(0); refreshNumbers(); } } // show a staffing change straight away, even while paused
+const openGates=()=>M.gates.filter(g=>!S.closed[g.id]);
+const staffOf=g=>S.staff[g.id]??g.stdStaff;
+const maxStaff=g=>g.maxLanes*Math.max(1,g.spl);   // a gate cannot use more people than it has lane positions
+const benchNow=()=>Math.max(0,S.pool-openGates().reduce((n,g)=>n+staffOf(g),0));
+const cmp=(x,y)=>x<y?-1:x>y?1:0;
+function loadOf(g){ const G=S.g[g.id]; if(!G) return 0; const arr=G.own+G.redir; return G.svc>0?arr/G.svc:(arr>0?Infinity:0); } // arrivals / scan rate: above 1 the line grows
+function pickDonor(g){ // gives up a person: a gate with a half-staffed lane first (that person does nothing), then the least busy. Every open gate keeps at least one lane.
+  return openGates().filter(o=>o!==g && staffOf(o)>o.spl)
+    .sort((x,y)=>cmp(staffOf(x)%x.spl!==0?0:1, staffOf(y)%y.spl!==0?0:1) || cmp(loadOf(x),loadOf(y)))[0]||null;
+}
+function pickReceiver(g){ // gets a person taken off g: the busiest open gate that still has room
+  return openGates().filter(o=>o!==g && staffOf(o)<maxStaff(o)).sort((x,y)=>cmp(loadOf(y),loadOf(x)))[0]||null;
+}
+function addPerson(g){ // returns who gave up the person ('bench' = nobody, they were unassigned), or null if no one could
+  if(staffOf(g)>=maxStaff(g)) return null;
+  if(benchNow()>0){ S.staff[g.id]=staffOf(g)+1; return 'bench'; }
+  const d=pickDonor(g); if(!d) return null;
+  S.staff[d.id]=staffOf(d)-1; S.staff[g.id]=staffOf(g)+1; return d;
+}
+function removePerson(g){ // returns who received the person, or 'bench' if no other gate could take them
+  if(staffOf(g)<=0) return null;
+  S.staff[g.id]=staffOf(g)-1; const r=pickReceiver(g);
+  if(r){ S.staff[r.id]=staffOf(r)+1; return r; } return 'bench';
+}
+function moveStaff(g,n){ // n>0 brings people to g, n<0 sends them away
+  seedCustom(); const who={}; let moved=0;
+  for(let i=0;i<Math.abs(n);i++){ const w=n>0?addPerson(g):removePerson(g); if(!w) break; moved++; const k=w==='bench'?'unassigned staff':w.name; who[k]=(who[k]||0)+1; }
+  const list=Object.entries(who).map(([k,v])=>v>1?`${k} (${v})`:k).join(', ');
+  if(moved) toast(n>0?`+${moved} at ${g.name}, taken from ${list}`:`-${moved} at ${g.name}, sent to ${list}`);
+  if(moved<Math.abs(n)) toast(n>0?`${g.name} can't take more: it is full (${maxStaff(g)} staff for ${g.maxLanes} lanes) or no other gate can spare anyone (each keeps at least one lane).`:`Nobody left to move at ${g.name}.`);
+  return moved;
+}
+function adjustStaff(g,d){ moveStaff(g,d); syncNow(); }
+function setStaff(g,v){ seedCustom(); const want=Math.max(0,Math.min(maxStaff(g),Math.round(v)||0)); moveStaff(g,want-staffOf(g)); syncNow(); return staffOf(g); }
+function reopenStaff(g){ // a gate that reopens gets its staff back only if they are still free
+  if(S.mode!=='custom') return;
+  let others=0; for(const o of openGates()) if(o!==g) others+=staffOf(o);
+  const want=staffOf(g), room=Math.max(0,S.pool-others); S.staff[g.id]=Math.min(want,room);
+  if(room<want) toast(`${g.name} reopened with ${room} staff. The rest of the ${S.pool} are at other gates.`);
+}
+function enforceLimits(){ // safety net, runs every frame: no gate over its lane positions, nobody over the 60
+  for(const g of openGates()) if(staffOf(g)>maxStaff(g)) S.staff[g.id]=maxStaff(g);
+  let over=openGates().reduce((n,g)=>n+staffOf(g),0)-S.pool;
+  while(over>0){ const big=openGates().reduce((x,y)=>staffOf(y)>staffOf(x)?y:x); if(staffOf(big)<=0) break; S.staff[big.id]--; over--; }
+}
+function setMode(m){ S.mode=m; $('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.m===m))); }
+function refreshStatic(){
+  for(const g of M.gates){ const c=cards[g.id]; const closed=!!S.closed[g.id]; c.el.classList.toggle('closed',closed); c.toggle.textContent=closed?'Reopen gate':'Close gate'; }
+}
+function poolUsed(){ let n=0; for(const g of M.gates){ const G=S.g[g.id]; if(G && !S.closed[g.id]) n+=G.staff; } return n; }
+function refreshNumbers(){
+  const day=M.days[S.dayIdx]; if(!day) return;
+  let inLine=0, served=0, waitW=0, staff=0, worst=-1, worstG='';
+  for(const g of M.gates){
+    const G=S.g[g.id], c=cards[g.id]; if(!G||!c) continue;
+    const closed=!!S.closed[g.id]; const w=G.wait===Infinity?Infinity:G.wait+S.laneTime;
+    inLine+=G.q; served+=G.served; waitW+=G.waitW; staff+=closed?0:G.staff;
+    if(!closed && w>worst){ worst=w; worstG=g.name; }
+    c.el.style.setProperty('--sev', closed?'var(--closed)':`var(${sev(w)})`);
+    c.q.textContent=Math.round(G.q);
+    c.wait.innerHTML= closed?'\u2014': w===Infinity?'\u221e<em>min</em>':`${fmt1(w)}<em>min</em>`;
+    c.arr.textContent= closed?'0 (redirected)': `${Math.round(G.own*15)}${G.redir>0.01?` +${Math.round(G.redir*15)} redirected`:''}`;
+    c.cap.textContent= closed?'\u2014': Math.round(G.svc*15);
+    c.lanes.textContent= closed?'\u2014': `${G.lanes} / ${g.maxLanes}${G.down?' \u26a0':''}`;
+    if(document.activeElement!==c.staff) c.staff.value= closed?0: G.staff;
+    c.served.textContent= Math.round(G.served);
+    const r=rowFor(day,g.id,S.t); c.actual.textContent= r? `${r.queue_length_end} in line \u00b7 ${r.avg_wait_min} min \u00b7 ${r.staff_assigned} staff` : 'no record';
+    c.status.textContent= closed?'Closed': G.down?'Scanners down': G.lanes===0?'No lanes':'Open';
+    c.status.classList.toggle('down', !closed && (!!G.down || G.lanes===0));
+    const full=G.staff>=maxStaff(g), noDonor=S.mode==='custom' && benchNow()<=0 && !pickDonor(g);
+    c.inc.disabled= closed || full || noDonor; c.inc.title= closed?'Gate is closed': full?`Full: ${maxStaff(g)} staff fill all ${g.maxLanes} lanes`: noDonor?'No other gate can spare anyone (each keeps one lane)':'Add one staff member, taken from another gate';
+    c.dec.disabled= closed || G.staff<=0; c.dec.title='Remove one staff member, sent to the busiest gate'; c.staff.disabled= closed;
+  }
+  $('tInLine').textContent=Math.round(inLine);
+  $('tWorst').innerHTML= worst<0?'\u2014': worst===Infinity?'\u221e<em>min</em>':`${fmt1(worst)}<em>min</em>`; $('tWorstK').textContent= worstG?`longest wait \u00b7 ${worstG}`:'longest wait';
+  $('tServed').textContent=Math.round(served);
+  $('tAvgWait').innerHTML= served>0?`${fmt1(waitW/served+S.laneTime)}<em>min</em>`:'\u2014';
+  $('tBench').textContent=Math.max(0,S.pool-staff);
+  $('tStaff').textContent=staff; const pct=S.pool>0?staff/S.pool*100:0; $('staffBar').classList.toggle('over',staff>S.pool); $('staffBar').firstElementChild.style.width=Math.min(100,pct)+'%';
+  const aw=actualAvgWait(day); $('tActualWait').textContent=isNaN(aw)?'\u2014':`${fmt1(aw)} min`;
+  $('tAway').textContent=Math.round(S.away);
+  $('totalsTime').textContent=fmtClock(S.t);
+  $('clock').textContent=fmtClock(S.t);
+  // now bar
+  const wx=weatherNow(); const live=DATA.performance_schedule.filter(r=>r.date===day.date && S.t>=tm(r.start_time) && S.t<tm(r.end_time));
+  $('nowBar').innerHTML = `<span>${day.day||''} <b>${day.date}</b></span>` + (wx?`<span>${wx.conditions} <b>${wx.temperature_f}\u00b0F</b>${+wx.precipitation_in>0?` \u00b7 ${wx.precipitation_in} in rain`:''}</span>`:'') + (live.length?`<span>On stage: <b>${live.map(r=>r.artist).join(', ')}</b></span>`:'<span>Nothing on stage</span>');
+  $('weatherNow').textContent = wx?`${wx.conditions}, ${wx.temperature_f}\u00b0F`:'';
+}
+function refreshEvents(){
+  const day=M.days[S.dayIdx]; if(!day) return;
+  const ev=[];
+  for(const r of DATA.performance_schedule) if(r.date===day.date) ev.push({a:tm(r.start_time), b:tm(r.end_time), html:`<b>${r.artist}</b> <span>\u00b7 ${r.stage}</span><span class="draw">${r.expected_draw}</span>`});
+  for(const r of DATA.equipment_downtime) if(r.date===day.date) ev.push({a:tm(r.start_time), b:tm(r.end_time), html:`<b>Gate ${r.gate_id}: ${r.scanners_affected} scanner${r.scanners_affected==1?'':'s'} down</b> <span>\u00b7 ${r.cause}</span>`, warn:true});
+  ev.sort((x,y)=>x.a-y.a);
+  $('events').innerHTML = ev.map(e=>`<div class="ev ${S.t>=e.a&&S.t<e.b?'live':S.t>=e.b?'past':''}"><span class="t">${fmtShort(e.a)}\u2013${fmtShort(e.b)}</span><span class="what">${e.html}</span></div>`).join('') || '<div class="note">No schedule or downtime records for this day.</div>';
+}
+function buildDays(){
+  const sel=$('daySel'); sel.innerHTML=M.days.map((d,i)=>`<option value="${i}">${d.day?d.day+' ':''}${d.date}</option>`).join('');
+  sel.value=S.dayIdx;
+}
+function syncScrub(){ const day=M.days[S.dayIdx]; if(!day) return; const s=$('scrub'); s.min=day.open; s.max=day.close; s.value=Math.floor(S.t); $('scrubOpen').textContent=fmtShort(day.open); $('scrubClose').textContent=fmtShort(day.close); }
+function buildDatasets(){
+  $('datasets').innerHTML = Object.keys(FILES).map(k=>`<div class="ds" id="ds-${k}"><span class="n">${NICE[k]}</span><span class="s"></span><label><input type="file" accept=".csv,text/csv" data-k="${k}"><span>Replace\u2026</span></label></div>`).join('');
+  $('datasets').querySelectorAll('input[type=file]').forEach(inp=>inp.addEventListener('change',async e=>{
+    const f=e.target.files[0]; if(!f) return; const k=inp.dataset.k;
+    try{ const rows=validate(k, parseCSV(await f.text())); DATA[k]=rows; SOURCE[k]=f.name; rebuild(); toast(`${NICE[k]} replaced with ${f.name} (${rows.length} rows)`); }
+    catch(err){ const el=$('ds-'+k); el.classList.add('err'); el.querySelector('.s').textContent=`${f.name}: ${err.message}`; }
+    inp.value='';
+  }));
+  refreshDatasets();
+}
+function refreshDatasets(){ for(const k of Object.keys(FILES)){ const el=$('ds-'+k); el.classList.remove('err'); el.querySelector('.s').textContent=`${(DATA[k]||[]).length} rows \u00b7 ${SOURCE[k]||'built-in'}`; } }
+let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,3500); }
+
+function rebuild(){
+  buildModel(); if(S.dayIdx>=M.days.length) S.dayIdx=0; S.closed={}; S.staff={}; setMode('hist');
+  buildCards(); buildDays(); resetSim(); syncScrub(); refreshStatic(); refreshEvents(); refreshNumbers(); refreshDatasets();
+}
+
+// controls
+$('daySel').addEventListener('change',e=>{ S.dayIdx=+e.target.value; resetSim(); syncScrub(); refreshEvents(); });
+$('playBtn').addEventListener('click',()=>{ const day=M.days[S.dayIdx]; if(day && S.t>=day.close-1e-6){ resetSim(); } S.playing=!S.playing; $('playBtn').textContent=S.playing?'Pause':'Play'; });
+$('restartBtn').addEventListener('click',()=>{ resetSim(); syncScrub(); });
+$('speedSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ S.speed=+b.dataset.s; $('speedSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); }));
+$('scrub').addEventListener('input',e=>{ jumpTo(+e.target.value); });
+$('modeSeg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ if(b.dataset.m==='custom') seedCustom(); else setMode('hist'); }));
+$('demand').addEventListener('input',e=>{ S.demand=+e.target.value; $('demandV').textContent=S.demand.toFixed(2); });
+$('ppd').addEventListener('change',e=>{ S.ppd=Math.max(1,+e.target.value||5); e.target.value=S.ppd; $('hint').textContent=`1 car = ${S.ppd} people \u00b7 cars take the ring road to their drop-off, then walk to the gate`; S.dots=[]; for(const g of M.gates) if(S.g[g.id]) S.g[g.id].queue=[]; });
+$('laneTime').addEventListener('change',e=>{ S.laneTime=Math.max(0,+e.target.value||0); });
+$('restoreBtn').addEventListener('click',()=>{ for(const k in BUILTIN){ DATA[k]=BUILTIN[k]; delete SOURCE[k]; } rebuild(); toast('Built-in datasets restored'); });
+window.addEventListener('resize',()=>{ resizeCanvas(); });
+const mq=matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change',readTheme);
+new MutationObserver(readTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+// loop
+let last=performance.now(), uiAcc=0;
+function frame(now){
+  const dtReal=Math.min(0.1,(now-last)/1000); last=now;
+  const day=M.days[S.dayIdx];
+  if(S.mode==='custom') enforceLimits();
+  let dtSim=0;
+  if(S.playing && day){
+    dtSim=dtReal*S.speed; let left=dtSim;
+    while(left>1e-6){ const h=Math.min(0.25,left); step(h); left-=h; if(S.t>=day.close){ S.playing=false; $('playBtn').textContent='Play'; break; } }
+    moveDots(Math.min(dtSim, 3));
+  } else if(day){ step(0); }
+  moveBars(dtReal); drawMap(); drawBars(); drawChart();
+  uiAcc+=dtReal; if(uiAcc>0.12 || !S.playing){ uiAcc=0; refreshNumbers(); if(S.playing){ refreshEvents(); syncScrub(); } }
+  requestAnimationFrame(frame);
+}
+
+// boot
+(async function(){
+  readTheme();
+  try{
+    await Promise.all(Object.keys(FILES).map(async k=>{
+      const emb=document.getElementById('csv-'+k); let text=emb?emb.textContent.trim():'';
+      if(!text.trim()){ const res=await fetch(FILES[k]); if(!res.ok) throw new Error(`${FILES[k]}: HTTP ${res.status}`); text=await res.text(); }
+      BUILTIN[k]=validate(k, parseCSV(text)); DATA[k]=BUILTIN[k]; }));
+  }catch(err){ toast('Could not load built-in data: '+err.message); for(const k in FILES){ DATA[k] ||= []; } }
+  buildDatasets(); rebuild();
+  // open on Saturday 2025, late afternoon, so the first frame already shows queues forming
+  const sats=M.days.map((d,i)=>/sat/i.test(d.day)?i:-1).filter(i=>i>=0); const sat=sats.length?sats[sats.length-1]:Math.min(1,M.days.length-1); if(sat>=0){ S.dayIdx=sat; $('daySel').value=sat; resetSim(); }
+  const day=M.days[S.dayIdx]; if(day){ jumpTo(Math.min(day.close, day.open+4*60+15)); syncScrub(); refreshEvents(); refreshNumbers(); }
+  requestAnimationFrame(frame);
+})();
+</script>

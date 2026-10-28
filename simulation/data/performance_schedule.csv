@@ -1,0 +1,39 @@
+festival_year,date,day,stage,artist,start_time,end_time,expected_draw
+2024,2024-12-06,Friday,Main Stage,The Copper Lanterns,16:00,17:00,Low
+2024,2024-12-06,Friday,Grove Stage,Mae & the Driftwood,16:30,17:20,Low
+2024,2024-12-06,Friday,Peach Stage,Static Bloom,17:30,18:30,Medium
+2024,2024-12-06,Friday,Main Stage,Harbor Lights,18:30,19:45,High
+2024,2024-12-06,Friday,Grove Stage,Juniper Coast,19:15,20:15,Low
+2024,2024-12-06,Friday,Main Stage,Velvet Horizon,20:45,22:15,Headliner
+2024,2024-12-07,Saturday,Grove Stage,Ashford Lane,13:00,13:50,Low
+2024,2024-12-07,Saturday,Peach Stage,Kite Season,14:00,15:00,Low
+2024,2024-12-07,Saturday,Main Stage,Rosa Delgado,15:00,16:00,Medium
+2024,2024-12-07,Saturday,Main Stage,Neon Orchard,17:30,18:45,High
+2024,2024-12-07,Saturday,Grove Stage,The Pinecone Choir,18:00,19:00,Low
+2024,2024-12-07,Saturday,Peach Stage,Saltwater Radio,19:00,20:00,Medium
+2024,2024-12-07,Saturday,Main Stage,Midnight Atlas,20:30,22:00,Headliner
+2024,2024-12-08,Sunday,Grove Stage,Little Fable,13:00,13:50,Low
+2024,2024-12-08,Sunday,Peach Stage,Gold Thread,14:30,15:30,Medium
+2024,2024-12-08,Sunday,Main Stage,Cedar & Smoke,16:00,17:00,Low
+2024,2024-12-08,Sunday,Main Stage,The Wild Parade,17:45,19:00,High
+2024,2024-12-08,Sunday,Peach Stage,Lila Moon,18:30,19:30,Low
+2024,2024-12-08,Sunday,Main Stage,Summit Avenue,20:00,21:30,Headliner
+2025,2025-12-05,Friday,Main Stage,Paper Airplanes,16:00,17:00,Low
+2025,2025-12-05,Friday,Grove Stage,Oliver Kane,16:45,17:35,Low
+2025,2025-12-05,Friday,Peach Stage,Bright Coastline,17:30,18:30,Medium
+2025,2025-12-05,Friday,Main Stage,The Marigolds,18:30,19:45,High
+2025,2025-12-05,Friday,Grove Stage,Hollow Pines,19:30,20:30,Low
+2025,2025-12-05,Friday,Main Stage,Starling Avenue,20:45,22:15,Headliner
+2025,2025-12-06,Saturday,Grove Stage,Fern & Fable,13:00,13:50,Low
+2025,2025-12-06,Saturday,Peach Stage,Coastal Drive,14:00,15:00,Medium
+2025,2025-12-06,Saturday,Main Stage,June Avery,15:30,16:30,Low
+2025,2025-12-06,Saturday,Main Stage,Echo Valley,17:30,18:45,High
+2025,2025-12-06,Saturday,Grove Stage,The Sundials,18:15,19:15,Low
+2025,2025-12-06,Saturday,Peach Stage,Red Clay Revival,19:00,20:00,Medium
+2025,2025-12-06,Saturday,Main Stage,Northern Lights Club,20:30,22:00,Headliner
+2025,2025-12-07,Sunday,Grove Stage,Blue Heron,13:00,13:50,Low
+2025,2025-12-07,Sunday,Peach Stage,The Sweet Teas,14:30,15:30,Low
+2025,2025-12-07,Sunday,Main Stage,Magnolia Fire,16:00,17:00,Medium
+2025,2025-12-07,Sunday,Main Stage,Glass Canyon,17:45,19:00,High
+2025,2025-12-07,Sunday,Peach Stage,Wren Collins,18:30,19:30,Low
+2025,2025-12-07,Sunday,Main Stage,Atlas & the Tide,20:00,21:30,Headliner
